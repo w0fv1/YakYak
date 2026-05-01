@@ -727,7 +727,9 @@
                 <div
                   class={`absolute inset-0 flex items-center ${
                     activeSwipeId === item.id && swipeX > 0 ? 'justify-start pl-5' : 'justify-end pr-5'
-                  } bg-emerald-500 text-emerald-950`}
+                  } bg-emerald-500 text-emerald-950 transition-opacity duration-100 ${
+                    activeSwipeId === item.id && Math.abs(swipeX) > 0 ? 'opacity-100' : 'opacity-0'
+                  }`}
                   aria-hidden="true"
                 >
                   <div class="flex items-center gap-2 text-sm font-black">
