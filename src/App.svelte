@@ -257,12 +257,12 @@
         },
       },
       {
-        element: guideElement('[data-guide="duration-tag"]'),
+        element: guideElement('[data-guide="timer"]'),
         popover: {
           title: '调整说话间隔',
           description: '点击倒计时可以设置秒数，比如 5 秒、8 秒或 12 秒。',
-          side: 'left',
-          align: 'start',
+          side: 'bottom',
+          align: 'center',
         },
       },
       {
