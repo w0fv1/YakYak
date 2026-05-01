@@ -149,12 +149,22 @@
       applySnapshot(snapshot)
     }
 
+    const shouldAutoStartGuide = !guideState.completed
+    if (shouldAutoStartGuide) {
+      updateGuideState({
+        completed: true,
+        timerHintSeen: true,
+        flowSwipeHintSeen: true,
+        importExportHintSeen: true,
+      })
+    }
+
     hydrated = true
     await writeSnapshot(buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState))
     clearLegacyStorage()
 
-    if (!guideState.completed) {
-      window.setTimeout(() => startMainGuide(true), 420)
+    if (shouldAutoStartGuide) {
+      window.setTimeout(() => startMainGuide(false), 420)
     }
   }
 
