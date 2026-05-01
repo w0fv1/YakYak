@@ -999,35 +999,30 @@
             </button>
           </div>
 
-          <div class="space-y-2.5">
-            {#each flowPhrases as item, index (item.id)}
+          <div
+            class={`overflow-hidden rounded-xl border ${
+              theme === 'dark' ? 'border-white/10 bg-white/[0.045]' : 'border-zinc-200 bg-zinc-50'
+            }`}
+          >
+            {#each flowPhrases as item (item.id)}
               <div
-                class={`flex gap-2 rounded-xl border p-2.5 ${
-                  theme === 'dark'
-                    ? 'border-white/10 bg-white/[0.045]'
-                    : 'border-zinc-200 bg-zinc-50'
+                class={`flex items-start gap-2 px-3 py-2.5 ${
+                  theme === 'dark' ? 'border-b border-white/8 last:border-b-0' : 'border-b border-zinc-200 last:border-b-0'
                 }`}
               >
-                <div
-                  class={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-black tabular-nums ${
-                    theme === 'dark' ? 'bg-white/[0.07] text-zinc-400' : 'bg-white text-zinc-500'
-                  }`}
-                >
-                  {index + 1}
-                </div>
                 <textarea
-                  class={`min-h-20 min-w-0 flex-1 resize-none rounded-lg border px-3 py-2.5 text-sm leading-snug outline-none ${
+                  class={`min-h-16 min-w-0 flex-1 resize-none bg-transparent py-1 text-[15px] leading-snug outline-none ${
                     theme === 'dark'
-                      ? 'border-white/10 bg-[#18181b] focus:border-cyan-400'
-                      : 'border-zinc-200 bg-white focus:border-cyan-600'
+                      ? 'text-zinc-100 placeholder:text-zinc-600'
+                      : 'text-zinc-950 placeholder:text-zinc-400'
                   }`}
                   value={item.text}
                   on:input={(event) => updateFlowLine(item.id, event.currentTarget.value)}
                 ></textarea>
-                <div class="flex shrink-0 flex-col gap-1.5">
+                <div class="flex shrink-0 items-center gap-1 pt-0.5">
                   <button
-                    class={`grid size-8 place-items-center rounded-lg transition ${
-                      theme === 'dark' ? 'bg-white/[0.06] active:bg-white/10' : 'bg-white active:bg-zinc-100'
+                    class={`grid size-8 place-items-center rounded-full transition ${
+                      theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-200'
                     }`}
                     type="button"
                     aria-label="上移"
@@ -1036,8 +1031,8 @@
                     <ChevronUp size={16} />
                   </button>
                   <button
-                    class={`grid size-8 place-items-center rounded-lg transition ${
-                      theme === 'dark' ? 'bg-white/[0.06] active:bg-white/10' : 'bg-white active:bg-zinc-100'
+                    class={`grid size-8 place-items-center rounded-full transition ${
+                      theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-200'
                     }`}
                     type="button"
                     aria-label="下移"
@@ -1046,8 +1041,8 @@
                     <ChevronDown size={16} />
                   </button>
                   <button
-                    class={`grid size-8 place-items-center rounded-lg text-red-400 transition ${
-                      theme === 'dark' ? 'bg-red-500/10 active:bg-red-500/15' : 'bg-red-50 active:bg-red-100'
+                    class={`grid size-8 place-items-center rounded-full transition ${
+                      theme === 'dark' ? 'text-red-400 active:bg-red-500/10' : 'text-red-500 active:bg-red-50'
                     }`}
                     type="button"
                     aria-label="删除流程词"
@@ -1087,34 +1082,29 @@
             </button>
           </div>
 
-          <div class="space-y-2.5">
+          <div
+            class={`overflow-hidden rounded-xl border ${
+              theme === 'dark' ? 'border-white/10 bg-white/[0.045]' : 'border-zinc-200 bg-zinc-50'
+            }`}
+          >
             {#each fillerPhrases as phrase, index}
               <div
-                class={`flex items-center gap-2 rounded-xl border p-2.5 ${
-                  theme === 'dark'
-                    ? 'border-white/10 bg-white/[0.045]'
-                    : 'border-zinc-200 bg-zinc-50'
+                class={`flex items-center gap-2 px-3 py-2.5 ${
+                  theme === 'dark' ? 'border-b border-white/8 last:border-b-0' : 'border-b border-zinc-200 last:border-b-0'
                 }`}
               >
-                <div
-                  class={`flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-black tabular-nums ${
-                    theme === 'dark' ? 'bg-white/[0.07] text-zinc-400' : 'bg-white text-zinc-500'
-                  }`}
-                >
-                  {index + 1}
-                </div>
                 <input
-                  class={`min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-sm outline-none ${
+                  class={`min-w-0 flex-1 bg-transparent py-2 text-[15px] outline-none ${
                     theme === 'dark'
-                      ? 'border-white/10 bg-[#18181b] focus:border-cyan-400'
-                      : 'border-zinc-200 bg-white focus:border-cyan-600'
+                      ? 'text-zinc-100 placeholder:text-zinc-600'
+                      : 'text-zinc-950 placeholder:text-zinc-400'
                   }`}
                   value={phrase}
                   on:input={(event) => updateFiller(index, event.currentTarget.value)}
                 />
                 <button
-                  class={`grid size-10 shrink-0 place-items-center rounded-lg text-red-400 transition ${
-                    theme === 'dark' ? 'bg-red-500/10 active:bg-red-500/15' : 'bg-red-50 active:bg-red-100'
+                  class={`grid size-9 shrink-0 place-items-center rounded-full transition ${
+                    theme === 'dark' ? 'text-red-400 active:bg-red-500/10' : 'text-red-500 active:bg-red-50'
                   }`}
                   type="button"
                   aria-label="删除万能句"
