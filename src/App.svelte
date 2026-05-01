@@ -737,13 +737,13 @@
                 </div>
 
                 <div
-                  class={`relative flex min-h-[74px] items-center gap-3 rounded-lg px-3 py-3 ${
+                  class={`relative flex min-h-[74px] items-center gap-3 rounded-[inherit] px-3 py-3 ${
                     index === 0
                       ? theme === 'dark'
-                        ? 'bg-cyan-950/50'
+                        ? 'bg-[#083344]'
                         : 'bg-cyan-50'
                       : theme === 'dark'
-                        ? 'bg-zinc-900'
+                        ? 'bg-[#18181b]'
                         : 'bg-white'
                   }`}
                   style={`transform: translateX(${activeSwipeId === item.id ? swipeX : 0}px); transition: ${gestureMode === 'swipe' ? 'none' : 'transform 180ms cubic-bezier(0.2, 0, 0, 1)'};`}
