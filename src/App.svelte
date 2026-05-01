@@ -946,23 +946,16 @@
           </div>
           <div class="min-w-0">
             <h2 class="text-lg font-black leading-tight tracking-normal">流程词</h2>
-            <div class="mt-1 flex flex-wrap gap-1.5">
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold">
               <span
-                class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black leading-none ${
-                  theme === 'dark'
-                    ? 'bg-cyan-400/14 text-cyan-200'
-                    : 'bg-cyan-100 text-cyan-800'
-                }`}
+                class={`inline-flex items-center gap-1 ${theme === 'dark' ? 'text-cyan-300' : 'text-cyan-700'}`}
               >
                 <span class="tabular-nums">{activeFlow.length}</span>
                 待讲
               </span>
+              <span class={theme === 'dark' ? 'text-zinc-700' : 'text-zinc-300'}>·</span>
               <span
-                class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black leading-none ${
-                  theme === 'dark'
-                    ? 'bg-emerald-400/12 text-emerald-200'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}
+                class={`inline-flex items-center gap-1 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}
               >
                 <span class="tabular-nums">{finishedCount}</span>
                 已过
