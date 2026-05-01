@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte'
   import { GripVertical, X } from 'lucide-svelte'
+  import { dragHandle } from 'svelte-dnd-action'
 
   type ThemeMode = 'dark' | 'light'
-  type GestureMode = 'idle' | 'pending' | 'swipe' | 'drag'
+  type GestureMode = 'idle' | 'pending' | 'swipe'
 
   export let id: string
   export let value: string
@@ -15,16 +16,13 @@
   const dispatch = createEventDispatcher<{
     change: string
     delete: void
-    reorder: { targetId: string; placement: 'before' | 'after' }
   }>()
 
   let mode: GestureMode = 'idle'
   let startX = 0
   let startY = 0
   let swipeX = 0
-  let dragY = 0
   let removing = false
-  let longPressTimer: ReturnType<typeof setTimeout> | undefined
   let textareaElement: HTMLTextAreaElement | undefined
 
   onMount(() => {
@@ -35,22 +33,12 @@
     if (event.button !== 0 || removing) return
 
     const target = event.target as HTMLElement
-    const canDrag = reorderable && Boolean(target.closest('[data-drag-handle]'))
+    if (target.closest('[data-drag-handle]')) return
 
     startX = event.clientX
     startY = event.clientY
     swipeX = 0
-    dragY = 0
     mode = 'pending'
-
-    if (canDrag) {
-      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-      clearLongPress()
-      longPressTimer = setTimeout(() => {
-        mode = 'drag'
-        navigator.vibrate?.(15)
-      }, 360)
-    }
   }
 
   function handlePointerMove(event: PointerEvent) {
@@ -59,31 +47,12 @@
     const dx = event.clientX - startX
     const dy = event.clientY - startY
 
-    if (mode === 'drag') {
-      event.preventDefault()
-      dragY = dy
-
-      const target = document
-        .elementsFromPoint(event.clientX, event.clientY)
-        .map((element) => element.closest<HTMLElement>('[data-editor-row-id]'))
-        .find((element) => element && element.dataset.editorRowId !== id)
-      const targetId = target?.dataset.editorRowId
-
-      if (targetId && targetId !== id) {
-        const rect = target.getBoundingClientRect()
-        const placement = event.clientY > rect.top + rect.height / 2 ? 'after' : 'before'
-        dispatch('reorder', { targetId, placement })
-      }
-      return
-    }
-
     if (mode === 'pending' && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
       clearGesture()
       return
     }
 
     if (mode === 'pending' && Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-      clearLongPress()
       mode = 'swipe'
     }
 
@@ -106,7 +75,6 @@
     const direction = swipeX >= 0 ? 1 : -1
     swipeX = direction * window.innerWidth
     removing = true
-    clearLongPress()
 
     window.setTimeout(() => {
       dispatch('delete')
@@ -115,18 +83,9 @@
     }, 220)
   }
 
-  function clearLongPress() {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer)
-      longPressTimer = undefined
-    }
-  }
-
   function clearGesture() {
-    clearLongPress()
     mode = 'idle'
     swipeX = 0
-    dragY = 0
   }
 
   function handleTextAreaInput(event: Event) {
@@ -170,9 +129,9 @@
   <div
     class={`relative flex items-start gap-2 rounded-[inherit] px-3 py-2.5 shadow-sm ${
       theme === 'dark' ? 'bg-[#18181b]' : 'bg-white'
-    } ${mode === 'drag' ? 'z-20 scale-[1.015] shadow-xl ring-1 ring-cyan-400/50' : ''}`}
-    style={`transform: translate(${swipeX}px, ${mode === 'drag' ? dragY : 0}px); transition: ${
-      mode === 'swipe' || mode === 'drag' ? 'none' : 'transform 180ms cubic-bezier(0.2, 0, 0, 1)'
+    }`}
+    style={`transform: translateX(${swipeX}px); transition: ${
+      mode === 'swipe' ? 'none' : 'transform 180ms cubic-bezier(0.2, 0, 0, 1)'
     };`}
   >
     {#if multiline}
@@ -203,6 +162,7 @@
           theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-100'
         }`}
         data-drag-handle
+        use:dragHandle
         aria-label="长按拖动排序"
         type="button"
       >

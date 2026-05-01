@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { flip } from 'svelte/animate'
   import { fade, fly } from 'svelte/transition'
   import { Toaster, toast } from 'svelte-sonner'
+  import { dragHandleZone } from 'svelte-dnd-action'
   import EditablePhraseRow from './EditablePhraseRow.svelte'
   import {
     Check,
@@ -41,6 +43,7 @@
   const dbVersion = 1
   const appStoreName = 'app'
   const snapshotKey = 'snapshot'
+  const editorFlipDurationMs = 180
   const fillerStorageKey = 'say-words-fillers'
   const flowStorageKey = 'say-words-flow'
   const durationStorageKey = 'say-words-duration'
@@ -437,18 +440,8 @@
     fillerPhrases = fillerPhrases.filter((_, itemIndex) => itemIndex !== index)
   }
 
-  function moveFlowNear(activeId: string, targetId: string, placement: 'before' | 'after') {
-    if (activeId === targetId) return
-    const activeIndex = flowPhrases.findIndex((item) => item.id === activeId)
-    if (activeIndex < 0) return
-
-    const next = [...flowPhrases]
-    const [item] = next.splice(activeIndex, 1)
-    const targetIndex = next.findIndex((nextItem) => nextItem.id === targetId)
-    if (targetIndex < 0) return
-
-    next.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, item)
-    flowPhrases = next
+  function handleFlowSort(event: CustomEvent<{ items: FlowLine[] }>) {
+    flowPhrases = event.detail.items.filter((item) => typeof item.text === 'string')
   }
 
   function handlePointerDown(event: PointerEvent, id: string) {
@@ -995,19 +988,32 @@
             </button>
           </div>
 
-          <div class="space-y-3" role="list">
+          <div
+            class="space-y-3"
+            aria-label="流程词排序"
+            use:dragHandleZone={{
+              items: flowPhrases,
+              flipDurationMs: editorFlipDurationMs,
+              delayTouchStart: 180,
+              morphDisabled: true,
+              dropTargetStyle: {},
+            }}
+            on:consider={handleFlowSort}
+            on:finalize={handleFlowSort}
+          >
             {#each flowPhrases as item (item.id)}
-              <EditablePhraseRow
-                id={item.id}
-                value={item.text}
-                {theme}
-                multiline
-                reorderable
-                placeholder="流程词"
-                on:change={(event) => updateFlowLine(item.id, event.detail)}
-                on:delete={() => deleteFlowLine(item.id)}
-                on:reorder={(event) => moveFlowNear(item.id, event.detail.targetId, event.detail.placement)}
-              />
+              <div animate:flip={{ duration: editorFlipDurationMs }} aria-label={item.text || '流程词'}>
+                <EditablePhraseRow
+                  id={item.id}
+                  value={item.text}
+                  {theme}
+                  multiline
+                  reorderable
+                  placeholder="流程词"
+                  on:change={(event) => updateFlowLine(item.id, event.detail)}
+                  on:delete={() => deleteFlowLine(item.id)}
+                />
+              </div>
             {/each}
           </div>
         {:else}
