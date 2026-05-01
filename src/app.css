@@ -38,7 +38,41 @@ textarea {
 }
 
 button {
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  cursor: text;
+}
+
+.swipe-complete-item,
+.swipe-delete-row {
+  cursor: ew-resize;
+}
+
+.swipe-complete-item:active,
+.swipe-delete-row:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.dnd-sort-zone {
+  cursor: default;
 }
 
 #app {
@@ -188,6 +222,7 @@ button {
 #dnd-action-dragged-el,
 .editor-dnd-dragged {
   z-index: 9999 !important;
+  cursor: grabbing !important;
   opacity: 0.96;
   transform: scale(1.035) rotate(0.35deg);
   filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.28));
@@ -202,6 +237,7 @@ button {
 
 [data-is-dnd-shadow-item-hint='true'] {
   position: relative;
+  cursor: copy;
   border-radius: 12px;
   min-height: 58px;
   background:

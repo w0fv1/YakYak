@@ -111,7 +111,7 @@
 <div
   data-editor-row-id={id}
   role="listitem"
-  class={`relative touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 ${
+  class={`swipe-delete-row relative touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 ${
     removing ? 'max-h-0 opacity-0' : multiline ? 'max-h-[999px] opacity-100' : 'max-h-20 opacity-100'
   }`}
   on:pointerdown={handlePointerDown}
@@ -165,7 +165,7 @@
 
     {#if reorderable}
       <button
-        class={`mt-1 grid size-8 shrink-0 place-items-center rounded-full ${
+        class={`drag-handle mt-1 grid size-8 shrink-0 place-items-center rounded-full ${
           theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-100'
         }`}
         data-drag-handle

@@ -857,7 +857,7 @@
     <section class="flex h-[34svh] shrink-0 flex-col items-center justify-center py-3">
       <div class="relative">
         <button
-          class="relative grid size-[min(45vw,182px)] max-h-[182px] min-h-[134px] min-w-[134px] place-items-center rounded-full"
+          class="relative grid size-[min(45vw,182px)] max-h-[182px] min-h-[134px] min-w-[134px] place-items-center rounded-full cursor-pointer"
           aria-label="设置倒计时秒数"
           type="button"
           data-guide="timer"
@@ -976,7 +976,7 @@
             {#each activeFlow as item, index (item.id)}
               <article
                 data-guide={index === 0 ? 'active-flow-item' : undefined}
-                class={`group relative touch-pan-y select-none overflow-hidden rounded-lg border transition-all duration-[250ms] ease-out ${
+                class={`swipe-complete-item group relative touch-pan-y select-none overflow-hidden rounded-lg border transition-all duration-[250ms] ease-out ${
                   index === 0
                     ? theme === 'dark'
                       ? 'border-cyan-300/70 bg-cyan-400/10 text-zinc-100 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_18px_48px_rgba(8,145,178,0.2)]'
@@ -1265,7 +1265,7 @@
           </div>
 
           <div
-            class="space-y-3"
+            class="dnd-sort-zone space-y-3"
             aria-label="流程词排序"
             data-guide="editor-list"
             use:dragHandleZone={{
