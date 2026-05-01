@@ -12,6 +12,7 @@ YakYak is a mobile-first prompting tool for livestream hosts. It keeps a visible
 - Light and dark modes.
 - IndexedDB persistence in the browser.
 - JSON import and export for phrase libraries.
+- PWA support for adding YakYak to the home screen.
 - Mobile-first layout with no page-level scrolling.
 
 ## Tech Stack
@@ -34,6 +35,16 @@ corepack pnpm dev
 ```bash
 corepack pnpm check
 corepack pnpm build
+```
+
+## E2E Tests
+
+Python E2E tests live in `etest/` and use Playwright against the production preview build.
+
+```bash
+pip install playwright
+playwright install chromium
+python -m unittest etest/test_yakyak.py
 ```
 
 ## Base URL

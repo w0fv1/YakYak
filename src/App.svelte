@@ -11,13 +11,15 @@
   import EditablePhraseRow from './EditablePhraseRow.svelte'
   import {
     Check,
-    CircleHelp,
     Download,
+    HelpCircle,
     ListChecks,
     Moon,
     Pencil,
     Plus,
     RefreshCcw,
+    Settings,
+    Smartphone,
     Sun,
     TimerReset,
     Upload,
@@ -51,6 +53,20 @@
     app: 'YakYak'
     version: 1
     exportedAt: string
+  }
+  type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>
+    userChoice: Promise<{
+      outcome: 'accepted' | 'dismissed'
+      platform: string
+    }>
+  }
+  type ImportPreview = {
+    snapshot: AppSnapshot
+    filename: string
+    flowCount: number
+    fillerCount: number
+    duration: number
   }
 
   const dbName = 'yakyak-db'
@@ -103,11 +119,16 @@
   let isEditOpen = false
   let isTimerOpen = false
   let isDataOpen = false
+  let isSystemOpen = false
   let timerInput = String(defaultDuration)
   let newFiller = ''
   let newFlowText = ''
   let guideState: GuideState = { ...defaultGuideState }
   let activeGuide: Driver | undefined
+  let deferredInstallPrompt: BeforeInstallPromptEvent | undefined
+  let canInstallPwa = false
+  let isPwaInstalled = false
+  let importPreview: ImportPreview | undefined
   let hydrated = false
   let saveTimer: ReturnType<typeof setTimeout> | undefined
   let databasePromise: Promise<IDBDatabase> | undefined
@@ -133,10 +154,28 @@
   }
 
   onMount(() => {
+    isPwaInstalled = isStandaloneDisplay()
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault()
+      deferredInstallPrompt = event as BeforeInstallPromptEvent
+      canInstallPwa = true
+    }
+    const handleAppInstalled = () => {
+      deferredInstallPrompt = undefined
+      canInstallPwa = false
+      isPwaInstalled = true
+      toast.success('已添加到主屏幕')
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
     void loadPersistedSnapshot()
     const timer = setInterval(tick, 1000)
 
     return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
       clearInterval(timer)
       if (saveTimer) {
         clearTimeout(saveTimer)
@@ -379,6 +418,7 @@
 
   function startMainGuide(markCompletedOnFinish = false) {
     activeGuide?.destroy()
+    isSystemOpen = false
     isTimerOpen = false
     isEditOpen = false
     isDataOpen = false
@@ -412,6 +452,36 @@
       },
     })
     activeGuide.drive()
+  }
+
+  function isStandaloneDisplay() {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      ('standalone' in navigator && Boolean(navigator.standalone))
+    )
+  }
+
+  async function installPwa() {
+    if (isPwaInstalled || isStandaloneDisplay()) {
+      toast.success('YakYak 已经在主屏幕中运行')
+      isPwaInstalled = true
+      return
+    }
+
+    if (!deferredInstallPrompt) {
+      toast.info('请用浏览器菜单里的“添加到主屏幕”安装 YakYak')
+      return
+    }
+
+    await deferredInstallPrompt.prompt()
+    const choice = await deferredInstallPrompt.userChoice
+    deferredInstallPrompt = undefined
+    canInstallPwa = false
+
+    if (choice.outcome === 'accepted') {
+      toast.success('已添加到主屏幕')
+      isPwaInstalled = true
+    }
   }
 
   function queueSnapshotSave(nextSnapshot: AppSnapshot) {
@@ -551,6 +621,7 @@
 
   function exportData() {
     isDataOpen = false
+    importPreview = undefined
     const nextGuideState = { ...guideState, importExportHintSeen: true }
     guideState = nextGuideState
     const payload: ExportPayload = {
@@ -587,14 +658,44 @@
       const payload = JSON.parse(await file.text()) as Partial<ExportPayload>
       const snapshot = normalizeImportPayload(payload)
 
-      applySnapshot(snapshot)
-      updateGuideState({ importExportHintSeen: true })
-      hydrated = true
-      await writeSnapshot(buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState))
-      toast.success('已导入并保存到浏览器数据库')
+      importPreview = {
+        snapshot,
+        filename: file.name,
+        flowCount: snapshot.flowPhrases.length,
+        fillerCount: snapshot.fillerPhrases.length,
+        duration: snapshot.duration,
+      }
+      isDataOpen = true
     } catch {
       toast.error('导入失败，请确认是 YakYak 导出的 JSON 文件')
     }
+  }
+
+  async function confirmImportData() {
+    if (!importPreview) return
+
+    const nextGuideState = { ...guideState, importExportHintSeen: true }
+    const nextSnapshot = {
+      ...importPreview.snapshot,
+      guide: nextGuideState,
+    }
+
+    applySnapshot(nextSnapshot)
+    guideState = nextGuideState
+    hydrated = true
+    await writeSnapshot(nextSnapshot)
+    importPreview = undefined
+    isDataOpen = false
+    toast.success('已导入并保存到浏览器数据库')
+  }
+
+  function cancelImportPreview() {
+    importPreview = undefined
+  }
+
+  function closeDataDialog() {
+    importPreview = undefined
+    isDataOpen = false
   }
 
   function normalizeImportPayload(payload: Partial<ExportPayload>): AppSnapshot {
@@ -816,12 +917,12 @@
               ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
               : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
           }`}
-          aria-label="使用引导"
+          aria-label="系统"
           type="button"
           data-guide="help-button"
-          on:click={() => startMainGuide(true)}
+          on:click={() => (isSystemOpen = true)}
         >
-          <CircleHelp size={17} />
+          <Settings size={17} />
           {#if !guideState.completed}
             <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-cyan-300"></span>
           {/if}
@@ -1117,13 +1218,95 @@
   offset={{ top: 18 }}
 />
 
+{#if isSystemOpen}
+  <div class="fixed inset-0 z-40 flex items-end p-3 sm:items-center sm:justify-center">
+    <button
+      class="absolute inset-0 bg-black/60 backdrop-blur-md"
+      type="button"
+      aria-label="关闭系统"
+      on:click={() => (isSystemOpen = false)}
+      transition:fade={{ duration: 160 }}
+    ></button>
+    <div class="modal-backdrop-effect pointer-events-none absolute inset-0" transition:fade={{ duration: 220 }}></div>
+    <div
+      class={`modal-panel relative w-full rounded-xl border p-4 shadow-2xl sm:max-w-sm ${
+        theme === 'dark' ? 'border-white/10 bg-zinc-950 text-zinc-100' : 'border-zinc-200 bg-white text-zinc-950'
+      }`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="system-title"
+      in:fly={{ y: 22, duration: 180 }}
+      out:fly={{ y: 14, duration: 120 }}
+    >
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <h2 id="system-title" class="text-lg font-black tracking-normal">系统</h2>
+          <p class={`mt-1 text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            安装和使用帮助
+          </p>
+        </div>
+        <button
+          class="grid size-9 place-items-center rounded-full"
+          type="button"
+          aria-label="关闭"
+          on:click={() => (isSystemOpen = false)}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div class="grid gap-2">
+        <button
+          class={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+              : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
+          }`}
+          type="button"
+          on:click={installPwa}
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-400 text-zinc-950">
+            <Smartphone size={18} />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-black">添加到主屏幕</span>
+            <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              {isPwaInstalled ? '已安装为桌面应用' : canInstallPwa ? '像 App 一样从桌面打开' : '浏览器菜单也可以添加'}
+            </span>
+          </span>
+        </button>
+
+        <button
+          class={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+              : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
+          }`}
+          type="button"
+          on:click={() => startMainGuide(true)}
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400 text-zinc-950">
+            <HelpCircle size={18} />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-black">引导 / 帮助</span>
+            <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              重新查看 YakYak 的使用方式
+            </span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if isDataOpen}
   <div class="fixed inset-0 z-40 flex items-end p-3 sm:items-center sm:justify-center">
     <button
       class="absolute inset-0 bg-black/60 backdrop-blur-md"
       type="button"
       aria-label="关闭导入导出"
-      on:click={() => (isDataOpen = false)}
+      on:click={closeDataDialog}
       transition:fade={{ duration: 160 }}
     ></button>
     <div class="modal-backdrop-effect pointer-events-none absolute inset-0" transition:fade={{ duration: 220 }}></div>
@@ -1148,11 +1331,58 @@
           class="grid size-9 place-items-center rounded-full"
           type="button"
           aria-label="关闭"
-          on:click={() => (isDataOpen = false)}
+          on:click={closeDataDialog}
         >
           <X size={18} />
         </button>
       </div>
+
+      {#if importPreview}
+        <div
+          class={`mb-3 rounded-lg border p-3 ${
+            theme === 'dark' ? 'border-cyan-300/20 bg-cyan-400/10' : 'border-cyan-200 bg-cyan-50'
+          }`}
+        >
+          <div class="text-sm font-black">确认导入</div>
+          <div class={`mt-1 truncate text-xs ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            {importPreview.filename}
+          </div>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs font-bold">
+            <div>
+              <div class="tabular-nums text-base font-black">{importPreview.flowCount}</div>
+              <div class={theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}>流程词</div>
+            </div>
+            <div>
+              <div class="tabular-nums text-base font-black">{importPreview.fillerCount}</div>
+              <div class={theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}>万能句</div>
+            </div>
+            <div>
+              <div class="tabular-nums text-base font-black">{importPreview.duration}s</div>
+              <div class={theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}>倒计时</div>
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <button
+              class={`rounded-lg border py-2 text-sm font-black ${
+                theme === 'dark'
+                  ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+                  : 'border-zinc-200 bg-white active:bg-zinc-100'
+              }`}
+              type="button"
+              on:click={cancelImportPreview}
+            >
+              取消
+            </button>
+            <button
+              class="rounded-lg bg-cyan-400 py-2 text-sm font-black text-zinc-950 active:bg-cyan-300"
+              type="button"
+              on:click={confirmImportData}
+            >
+              确认导入
+            </button>
+          </div>
+        </div>
+      {/if}
 
       <div class="grid gap-2">
         <button

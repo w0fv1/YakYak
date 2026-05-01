@@ -1,0 +1,21 @@
+{
+  "name": "YakYak - 说词儿啊！",
+  "short_name": "YakYak",
+  "description": "给主播使用的说话节奏和流程词提示工具。",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "categories": ["productivity", "utilities"],
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
