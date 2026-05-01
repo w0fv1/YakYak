@@ -58,6 +58,7 @@
   const appStoreName = 'app'
   const snapshotKey = 'snapshot'
   const editorFlipDurationMs = 180
+  const defaultDuration = 8
   const fillerStorageKey = 'say-words-fillers'
   const flowStorageKey = 'say-words-flow'
   const durationStorageKey = 'say-words-duration'
@@ -91,8 +92,8 @@
     timerHintDismissCount: 0,
   }
 
-  let duration = 8
-  let remaining = 8
+  let duration = defaultDuration
+  let remaining = defaultDuration
   let fillerPhrases = [...defaultFillers]
   let flowPhrases = defaultFlow.map((item) => ({ ...item }))
   let visibleFlowIds = flowPhrases.map((item) => item.id)
@@ -101,7 +102,7 @@
   let editTab: EditTab = 'flow'
   let isEditOpen = false
   let isTimerOpen = false
-  let timerInput = '8'
+  let timerInput = String(defaultDuration)
   let newFiller = ''
   let newFlowText = ''
   let guideState: GuideState = { ...defaultGuideState }
@@ -453,12 +454,15 @@
   }
 
   function readLegacySnapshot(): AppSnapshot | null {
-    const savedDuration = Number(localStorage.getItem(durationStorageKey))
+    const savedDurationValue = localStorage.getItem(durationStorageKey)
+    const savedDuration = savedDurationValue === null ? NaN : Number(savedDurationValue)
     const savedTheme = localStorage.getItem(themeStorageKey) as ThemeMode | null
     const savedFillers = readStoredArray<string>(fillerStorageKey)
     const savedFlow = readStoredArray<FlowLine>(flowStorageKey)
+    const hasSavedTheme = savedTheme === 'light' || savedTheme === 'dark'
+    const hasSavedDuration = Number.isFinite(savedDuration)
 
-    if (!savedFillers?.length && !savedFlow?.length && !Number.isFinite(savedDuration)) {
+    if (!savedFillers?.length && !savedFlow?.length && !hasSavedDuration && !hasSavedTheme) {
       return null
     }
 
@@ -522,14 +526,16 @@
 
   function saveTimerSettings() {
     const nextDuration = normalizeDuration(Number(timerInput))
-    duration = Number.isFinite(nextDuration) ? nextDuration : 8
+    duration = Number.isFinite(nextDuration) ? nextDuration : defaultDuration
     remaining = duration
     currentFiller = ''
     isTimerOpen = false
   }
 
   function normalizeDuration(value: number) {
-    return Number.isFinite(value) ? Math.min(99, Math.max(3, Math.round(value))) : 8
+    return Number.isFinite(value)
+      ? Math.min(99, Math.max(3, Math.round(value)))
+      : defaultDuration
   }
 
   function exportData() {
