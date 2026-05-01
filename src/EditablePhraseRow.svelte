@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, tick } from 'svelte'
   import { GripVertical, X } from 'lucide-svelte'
 
   type ThemeMode = 'dark' | 'light'
@@ -25,9 +25,18 @@
   let dragY = 0
   let removing = false
   let longPressTimer: ReturnType<typeof setTimeout> | undefined
+  let textareaElement: HTMLTextAreaElement | undefined
+
+  $: if (multiline && textareaElement) {
+    value
+    void resizeTextarea()
+  }
 
   function handlePointerDown(event: PointerEvent) {
     if (event.button !== 0 || removing) return
+
+    const target = event.target as HTMLElement
+    const canDrag = reorderable && Boolean(target.closest('[data-drag-handle]'))
 
     startX = event.clientX
     startY = event.clientY
@@ -35,10 +44,8 @@
     dragY = 0
     mode = 'pending'
 
-    const target = event.target as HTMLElement
-    const canDrag = reorderable && Boolean(target.closest('[data-drag-handle]'))
-
     if (canDrag) {
+      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       clearLongPress()
       longPressTimer = setTimeout(() => {
         mode = 'drag'
@@ -58,8 +65,9 @@
       dragY = dy
 
       const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest<HTMLElement>('[data-editor-row-id]')
+        .elementsFromPoint(event.clientX, event.clientY)
+        .map((element) => element.closest<HTMLElement>('[data-editor-row-id]'))
+        .find((element) => element && element.dataset.editorRowId !== id)
       const targetId = target?.dataset.editorRowId
 
       if (targetId && targetId !== id) {
@@ -121,13 +129,21 @@
     swipeX = 0
     dragY = 0
   }
+
+  async function resizeTextarea() {
+    await tick()
+    if (!textareaElement) return
+
+    textareaElement.style.height = 'auto'
+    textareaElement.style.height = `${textareaElement.scrollHeight}px`
+  }
 </script>
 
 <div
   data-editor-row-id={id}
   role="listitem"
   class={`relative touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 ${
-    removing ? 'max-h-0 opacity-0' : multiline ? 'max-h-32 opacity-100' : 'max-h-20 opacity-100'
+    removing ? 'max-h-0 opacity-0' : multiline ? 'max-h-[999px] opacity-100' : 'max-h-20 opacity-100'
   }`}
   on:pointerdown={handlePointerDown}
   on:pointermove={handlePointerMove}
@@ -151,14 +167,16 @@
   <div
     class={`relative flex items-start gap-2 rounded-[inherit] px-3 py-2.5 shadow-sm ${
       theme === 'dark' ? 'bg-[#18181b]' : 'bg-white'
-    } ${mode === 'drag' ? 'shadow-xl ring-1 ring-cyan-400/50' : ''}`}
+    } ${mode === 'drag' ? 'z-20 scale-[1.015] shadow-xl ring-1 ring-cyan-400/50' : ''}`}
     style={`transform: translate(${swipeX}px, ${mode === 'drag' ? dragY : 0}px); transition: ${
       mode === 'swipe' || mode === 'drag' ? 'none' : 'transform 180ms cubic-bezier(0.2, 0, 0, 1)'
     };`}
   >
     {#if multiline}
       <textarea
-        class={`min-h-16 min-w-0 flex-1 resize-none bg-transparent py-1 text-[15px] leading-snug outline-none ${
+        bind:this={textareaElement}
+        rows="1"
+        class={`min-h-8 min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-1 text-[15px] leading-snug outline-none ${
           theme === 'dark' ? 'text-zinc-100 placeholder:text-zinc-600' : 'text-zinc-950 placeholder:text-zinc-400'
         }`}
         {placeholder}
