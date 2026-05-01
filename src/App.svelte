@@ -102,6 +102,7 @@
   let editTab: EditTab = 'flow'
   let isEditOpen = false
   let isTimerOpen = false
+  let isDataOpen = false
   let timerInput = String(defaultDuration)
   let newFiller = ''
   let newFlowText = ''
@@ -371,6 +372,7 @@
     activeGuide?.destroy()
     isTimerOpen = false
     isEditOpen = false
+    isDataOpen = false
 
     void afterDomUpdate().then(() => {
       activeGuide = createGuide(getMainGuideSteps(), {
@@ -539,6 +541,7 @@
   }
 
   function exportData() {
+    isDataOpen = false
     const nextGuideState = { ...guideState, importExportHintSeen: true }
     guideState = nextGuideState
     const payload: ExportPayload = {
@@ -561,6 +564,7 @@
   }
 
   function selectImportFile() {
+    isDataOpen = false
     importFileInput?.click()
   }
 
@@ -814,33 +818,19 @@
           {/if}
         </button>
 
-        <div class="flex items-center gap-1.5" data-guide="library-actions">
-          <button
-            class={`grid size-9 place-items-center rounded-full border transition ${
-              theme === 'dark'
-                ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
-                : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
-            }`}
-            aria-label="导入数据"
-            type="button"
-            on:click={selectImportFile}
-          >
-            <Upload size={17} />
-          </button>
-
-          <button
-            class={`grid size-9 place-items-center rounded-full border transition ${
-              theme === 'dark'
-                ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
-                : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
-            }`}
-            aria-label="导出数据"
-            type="button"
-            on:click={exportData}
-          >
-            <Download size={17} />
-          </button>
-        </div>
+        <button
+          class={`grid size-9 place-items-center rounded-full border transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
+              : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
+          }`}
+          aria-label="导入导出数据"
+          type="button"
+          data-guide="library-actions"
+          on:click={() => (isDataOpen = true)}
+        >
+          <Download size={17} />
+        </button>
 
         <button
           class={`grid size-9 place-items-center rounded-full border transition ${
@@ -1105,6 +1095,88 @@
   mobileOffset={{ top: 14 }}
   offset={{ top: 18 }}
 />
+
+{#if isDataOpen}
+  <div class="fixed inset-0 z-40 flex items-end p-3 sm:items-center sm:justify-center">
+    <button
+      class="absolute inset-0 bg-black/60 backdrop-blur-md"
+      type="button"
+      aria-label="关闭导入导出"
+      on:click={() => (isDataOpen = false)}
+      transition:fade={{ duration: 160 }}
+    ></button>
+    <div class="modal-backdrop-effect pointer-events-none absolute inset-0" transition:fade={{ duration: 220 }}></div>
+    <div
+      class={`modal-panel relative w-full rounded-xl border p-4 shadow-2xl sm:max-w-sm ${
+        theme === 'dark' ? 'border-white/10 bg-zinc-950 text-zinc-100' : 'border-zinc-200 bg-white text-zinc-950'
+      }`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="data-title"
+      in:fly={{ y: 22, duration: 180 }}
+      out:fly={{ y: 14, duration: 120 }}
+    >
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <h2 id="data-title" class="text-lg font-black tracking-normal">词库数据</h2>
+          <p class={`mt-1 text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            导入或导出 YakYak JSON
+          </p>
+        </div>
+        <button
+          class="grid size-9 place-items-center rounded-full"
+          type="button"
+          aria-label="关闭"
+          on:click={() => (isDataOpen = false)}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div class="grid gap-2">
+        <button
+          class={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+              : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
+          }`}
+          type="button"
+          on:click={selectImportFile}
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-400 text-zinc-950">
+            <Upload size={18} />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-black">导入词库</span>
+            <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              选择 YakYak 导出的 JSON 文件
+            </span>
+          </span>
+        </button>
+
+        <button
+          class={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+              : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
+          }`}
+          type="button"
+          on:click={exportData}
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400 text-zinc-950">
+            <Download size={18} />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-black">导出词库</span>
+            <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              下载当前流程词和万能句
+            </span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if isTimerOpen}
   <div class="fixed inset-0 z-40 flex items-end p-3 sm:items-center sm:justify-center">
