@@ -249,8 +249,8 @@
       {
         element: guideElement('[data-guide="timer"]'),
         popover: {
-          title: '盯住倒计时',
-          description: '圆环会一直循环。进入最后三分之一时，下面会出现万能句，提醒你及时接话。',
+          title: '关注倒计时',
+          description: '在这个时间内，你至少要讲一句词儿。圆环会一直循环。进入最后三分之一时，下面会出现万能句，提醒你及时接话。',
           side: 'bottom',
           align: 'center',
         },
