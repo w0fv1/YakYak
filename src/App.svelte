@@ -3,7 +3,10 @@
   import { flip } from 'svelte/animate'
   import { fade, fly } from 'svelte/transition'
   import { Toaster, toast } from 'svelte-sonner'
-  import { dragHandleZone } from 'svelte-dnd-action'
+  import {
+    dragHandleZone,
+    SHADOW_ITEM_MARKER_PROPERTY_NAME,
+  } from 'svelte-dnd-action'
   import EditablePhraseRow from './EditablePhraseRow.svelte'
   import {
     Check,
@@ -442,6 +445,14 @@
 
   function handleFlowSort(event: CustomEvent<{ items: FlowLine[] }>) {
     flowPhrases = event.detail.items.filter((item) => typeof item.text === 'string')
+  }
+
+  function styleDraggedEditorRow(element?: HTMLElement) {
+    element?.classList.add('editor-dnd-dragged')
+  }
+
+  function isDndShadowItem(item: FlowLine) {
+    return Boolean((item as FlowLine & Record<string, unknown>)[SHADOW_ITEM_MARKER_PROPERTY_NAME])
   }
 
   function handlePointerDown(event: PointerEvent, id: string) {
@@ -997,12 +1008,17 @@
               delayTouchStart: 180,
               morphDisabled: true,
               dropTargetStyle: {},
+              transformDraggedElement: styleDraggedEditorRow,
             }}
             on:consider={handleFlowSort}
             on:finalize={handleFlowSort}
           >
             {#each flowPhrases as item (item.id)}
-              <div animate:flip={{ duration: editorFlipDurationMs }} aria-label={item.text || '流程词'}>
+              <div
+                animate:flip={{ duration: editorFlipDurationMs }}
+                aria-label={item.text || '流程词'}
+                data-is-dnd-shadow-item-hint={isDndShadowItem(item)}
+              >
                 <EditablePhraseRow
                   id={item.id}
                   value={item.text}
