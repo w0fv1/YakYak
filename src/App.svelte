@@ -275,19 +275,19 @@
         },
       },
       {
-        element: guideElement('[data-guide="library-actions"]'),
+        element: guideElement('[data-guide="edit-button"]'),
         popover: {
-          title: '备份你的词库',
-          description: '导出 JSON 可以备份词库；换设备时再导入，就能继续使用。',
+          title: '把它改成你的话',
+          description: '编辑词库可以添加流程词和万能句。流程词支持长按排序。',
           side: 'bottom',
           align: 'end',
         },
       },
       {
-        element: guideElement('[data-guide="edit-button"]'),
+        element: guideElement('[data-guide="library-actions"]'),
         popover: {
-          title: '把它改成你的话',
-          description: '编辑词库可以添加流程词和万能句。流程词支持长按排序。',
+          title: '备份你的词库',
+          description: '导出 JSON 可以备份词库；换设备时再导入，就能继续使用。',
           side: 'bottom',
           align: 'end',
         },
