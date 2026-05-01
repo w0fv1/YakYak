@@ -902,8 +902,8 @@
     ></button>
     <div class="modal-backdrop-effect pointer-events-none absolute inset-0" transition:fade={{ duration: 220 }}></div>
     <div
-      class={`modal-panel relative flex max-h-[92svh] w-full flex-col rounded-xl border shadow-2xl sm:max-w-lg ${
-        theme === 'dark' ? 'border-white/10 bg-zinc-950 text-zinc-100' : 'border-zinc-200 bg-white text-zinc-950'
+      class={`modal-panel relative flex max-h-[92svh] w-full flex-col overflow-hidden rounded-2xl border shadow-2xl sm:max-w-lg ${
+        theme === 'dark' ? 'border-white/10 bg-[#09090b] text-zinc-100' : 'border-zinc-200 bg-white text-zinc-950'
       }`}
       role="dialog"
       aria-modal="true"
@@ -911,26 +911,42 @@
       in:fly={{ y: 22, duration: 180 }}
       out:fly={{ y: 14, duration: 120 }}
     >
-      <div class="flex shrink-0 items-center justify-between border-b border-current/10 p-4">
-        <h2 id="editor-title" class="text-lg font-black tracking-normal">编辑词库</h2>
-        <button
-          class="grid size-9 place-items-center rounded-full"
-          type="button"
-          aria-label="关闭"
-          on:click={() => (isEditOpen = false)}
-        >
-          <X size={18} />
-        </button>
+      <div class="shrink-0 px-4 pb-3 pt-3">
+        <div class={`mx-auto mb-3 h-1 w-10 rounded-full ${theme === 'dark' ? 'bg-white/16' : 'bg-zinc-300'}`}></div>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h2 id="editor-title" class="text-lg font-black leading-tight tracking-normal">编辑词库</h2>
+            <p class={`mt-1 text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              {flowPhrases.length} 条流程词 · {fillerPhrases.length} 条万能句
+            </p>
+          </div>
+          <button
+            class={`grid size-9 shrink-0 place-items-center rounded-full transition ${
+              theme === 'dark' ? 'bg-white/[0.06] active:bg-white/10' : 'bg-zinc-100 active:bg-zinc-200'
+            }`}
+            type="button"
+            aria-label="关闭"
+            on:click={() => (isEditOpen = false)}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 p-3">
+      <div
+        class={`mx-3 grid shrink-0 grid-cols-2 gap-1 rounded-xl p-1 ${
+          theme === 'dark' ? 'bg-white/[0.06]' : 'bg-zinc-100'
+        }`}
+      >
         <button
-          class={`rounded-lg py-2 text-sm font-black ${
+          class={`rounded-lg py-2.5 text-sm font-black transition ${
             editTab === 'flow'
-              ? 'bg-cyan-400 text-zinc-950'
+              ? theme === 'dark'
+                ? 'bg-cyan-400 text-zinc-950 shadow-[0_8px_24px_rgba(34,211,238,0.18)]'
+                : 'bg-white text-zinc-950 shadow-sm'
               : theme === 'dark'
-                ? 'bg-white/[0.06] text-zinc-300'
-                : 'bg-zinc-100 text-zinc-700'
+                ? 'text-zinc-400'
+                : 'text-zinc-500'
           }`}
           type="button"
           on:click={() => (editTab = 'flow')}
@@ -938,12 +954,14 @@
           流程词
         </button>
         <button
-          class={`rounded-lg py-2 text-sm font-black ${
+          class={`rounded-lg py-2.5 text-sm font-black transition ${
             editTab === 'fillers'
-              ? 'bg-cyan-400 text-zinc-950'
+              ? theme === 'dark'
+                ? 'bg-cyan-400 text-zinc-950 shadow-[0_8px_24px_rgba(34,211,238,0.18)]'
+                : 'bg-white text-zinc-950 shadow-sm'
               : theme === 'dark'
-                ? 'bg-white/[0.06] text-zinc-300'
-                : 'bg-zinc-100 text-zinc-700'
+                ? 'text-zinc-400'
+                : 'text-zinc-500'
           }`}
           type="button"
           on:click={() => (editTab = 'fillers')}
@@ -952,21 +970,27 @@
         </button>
       </div>
 
-      <div class="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+      <div class="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
         {#if editTab === 'flow'}
-          <div class="mb-3 flex gap-2">
+          <div
+            class={`sticky top-0 z-10 mb-3 flex gap-2 rounded-xl border p-2 backdrop-blur ${
+              theme === 'dark'
+                ? 'border-white/10 bg-[#09090b]/90'
+                : 'border-zinc-200 bg-white/90'
+            }`}
+          >
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
-                  ? 'border-white/10 bg-white/[0.06] focus:border-cyan-400'
-                  : 'border-zinc-200 bg-zinc-50 focus:border-cyan-600'
+                  ? 'border-white/10 bg-white/[0.06] placeholder:text-zinc-600 focus:border-cyan-400'
+                  : 'border-zinc-200 bg-zinc-50 placeholder:text-zinc-400 focus:border-cyan-600'
               }`}
               placeholder="新增流程词"
               bind:value={newFlowText}
               on:keydown={(event) => event.key === 'Enter' && addFlowLine()}
             />
             <button
-              class="grid size-12 shrink-0 place-items-center rounded-lg bg-cyan-400 text-zinc-950 active:bg-cyan-300"
+              class="grid size-12 shrink-0 place-items-center rounded-lg bg-cyan-400 text-zinc-950 shadow-[0_10px_24px_rgba(34,211,238,0.2)] active:bg-cyan-300"
               type="button"
               aria-label="新增流程词"
               on:click={addFlowLine}
@@ -975,25 +999,36 @@
             </button>
           </div>
 
-          <div class="space-y-2">
-            {#each flowPhrases as item (item.id)}
+          <div class="space-y-2.5">
+            {#each flowPhrases as item, index (item.id)}
               <div
-                class={`flex gap-2 rounded-lg border p-2 ${
-                  theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-zinc-200 bg-zinc-50'
+                class={`flex gap-2 rounded-xl border p-2.5 ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/[0.045]'
+                    : 'border-zinc-200 bg-zinc-50'
                 }`}
               >
+                <div
+                  class={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-black tabular-nums ${
+                    theme === 'dark' ? 'bg-white/[0.07] text-zinc-400' : 'bg-white text-zinc-500'
+                  }`}
+                >
+                  {index + 1}
+                </div>
                 <textarea
-                  class={`min-h-16 min-w-0 flex-1 resize-none rounded-md border px-3 py-2 text-sm leading-snug outline-none ${
+                  class={`min-h-20 min-w-0 flex-1 resize-none rounded-lg border px-3 py-2.5 text-sm leading-snug outline-none ${
                     theme === 'dark'
-                      ? 'border-white/10 bg-zinc-950 focus:border-cyan-400'
+                      ? 'border-white/10 bg-[#18181b] focus:border-cyan-400'
                       : 'border-zinc-200 bg-white focus:border-cyan-600'
                   }`}
                   value={item.text}
                   on:input={(event) => updateFlowLine(item.id, event.currentTarget.value)}
                 ></textarea>
-                <div class="flex shrink-0 flex-col gap-1">
+                <div class="flex shrink-0 flex-col gap-1.5">
                   <button
-                    class="grid size-8 place-items-center rounded-md"
+                    class={`grid size-8 place-items-center rounded-lg transition ${
+                      theme === 'dark' ? 'bg-white/[0.06] active:bg-white/10' : 'bg-white active:bg-zinc-100'
+                    }`}
                     type="button"
                     aria-label="上移"
                     on:click={() => moveFlow(item.id, -1)}
@@ -1001,7 +1036,9 @@
                     <ChevronUp size={16} />
                   </button>
                   <button
-                    class="grid size-8 place-items-center rounded-md"
+                    class={`grid size-8 place-items-center rounded-lg transition ${
+                      theme === 'dark' ? 'bg-white/[0.06] active:bg-white/10' : 'bg-white active:bg-zinc-100'
+                    }`}
                     type="button"
                     aria-label="下移"
                     on:click={() => moveFlow(item.id, 1)}
@@ -1009,7 +1046,9 @@
                     <ChevronDown size={16} />
                   </button>
                   <button
-                    class="grid size-8 place-items-center rounded-md text-red-400"
+                    class={`grid size-8 place-items-center rounded-lg text-red-400 transition ${
+                      theme === 'dark' ? 'bg-red-500/10 active:bg-red-500/15' : 'bg-red-50 active:bg-red-100'
+                    }`}
                     type="button"
                     aria-label="删除流程词"
                     on:click={() => deleteFlowLine(item.id)}
@@ -1021,19 +1060,25 @@
             {/each}
           </div>
         {:else}
-          <div class="mb-3 flex gap-2">
+          <div
+            class={`sticky top-0 z-10 mb-3 flex gap-2 rounded-xl border p-2 backdrop-blur ${
+              theme === 'dark'
+                ? 'border-white/10 bg-[#09090b]/90'
+                : 'border-zinc-200 bg-white/90'
+            }`}
+          >
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
-                  ? 'border-white/10 bg-white/[0.06] focus:border-cyan-400'
-                  : 'border-zinc-200 bg-zinc-50 focus:border-cyan-600'
+                  ? 'border-white/10 bg-white/[0.06] placeholder:text-zinc-600 focus:border-cyan-400'
+                  : 'border-zinc-200 bg-zinc-50 placeholder:text-zinc-400 focus:border-cyan-600'
               }`}
               placeholder="新增万能句"
               bind:value={newFiller}
               on:keydown={(event) => event.key === 'Enter' && addFiller()}
             />
             <button
-              class="grid size-12 shrink-0 place-items-center rounded-lg bg-cyan-400 text-zinc-950 active:bg-cyan-300"
+              class="grid size-12 shrink-0 place-items-center rounded-lg bg-cyan-400 text-zinc-950 shadow-[0_10px_24px_rgba(34,211,238,0.2)] active:bg-cyan-300"
               type="button"
               aria-label="新增万能句"
               on:click={addFiller}
@@ -1042,24 +1087,35 @@
             </button>
           </div>
 
-          <div class="space-y-2">
+          <div class="space-y-2.5">
             {#each fillerPhrases as phrase, index}
               <div
-                class={`flex gap-2 rounded-lg border p-2 ${
-                  theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-zinc-200 bg-zinc-50'
+                class={`flex items-center gap-2 rounded-xl border p-2.5 ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/[0.045]'
+                    : 'border-zinc-200 bg-zinc-50'
                 }`}
               >
+                <div
+                  class={`flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-black tabular-nums ${
+                    theme === 'dark' ? 'bg-white/[0.07] text-zinc-400' : 'bg-white text-zinc-500'
+                  }`}
+                >
+                  {index + 1}
+                </div>
                 <input
-                  class={`min-w-0 flex-1 rounded-md border px-3 py-2 text-sm outline-none ${
+                  class={`min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-sm outline-none ${
                     theme === 'dark'
-                      ? 'border-white/10 bg-zinc-950 focus:border-cyan-400'
+                      ? 'border-white/10 bg-[#18181b] focus:border-cyan-400'
                       : 'border-zinc-200 bg-white focus:border-cyan-600'
                   }`}
                   value={phrase}
                   on:input={(event) => updateFiller(index, event.currentTarget.value)}
                 />
                 <button
-                  class="grid size-10 shrink-0 place-items-center rounded-md text-red-400"
+                  class={`grid size-10 shrink-0 place-items-center rounded-lg text-red-400 transition ${
+                    theme === 'dark' ? 'bg-red-500/10 active:bg-red-500/15' : 'bg-red-50 active:bg-red-100'
+                  }`}
                   type="button"
                   aria-label="删除万能句"
                   on:click={() => deleteFiller(index)}
