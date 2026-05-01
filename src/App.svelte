@@ -2,10 +2,9 @@
   import { onMount } from 'svelte'
   import { fade, fly } from 'svelte/transition'
   import { Toaster, toast } from 'svelte-sonner'
+  import EditablePhraseRow from './EditablePhraseRow.svelte'
   import {
     Check,
-    ChevronDown,
-    ChevronUp,
     Download,
     ListChecks,
     Moon,
@@ -438,14 +437,17 @@
     fillerPhrases = fillerPhrases.filter((_, itemIndex) => itemIndex !== index)
   }
 
-  function moveFlow(id: string, direction: -1 | 1) {
-    const index = flowPhrases.findIndex((item) => item.id === id)
-    const targetIndex = index + direction
-    if (index < 0 || targetIndex < 0 || targetIndex >= flowPhrases.length) return
+  function moveFlowNear(activeId: string, targetId: string, placement: 'before' | 'after') {
+    if (activeId === targetId) return
+    const activeIndex = flowPhrases.findIndex((item) => item.id === activeId)
+    if (activeIndex < 0) return
 
     const next = [...flowPhrases]
-    const [item] = next.splice(index, 1)
-    next.splice(targetIndex, 0, item)
+    const [item] = next.splice(activeIndex, 1)
+    const targetIndex = next.findIndex((nextItem) => nextItem.id === targetId)
+    if (targetIndex < 0) return
+
+    next.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, item)
     flowPhrases = next
   }
 
@@ -972,13 +974,7 @@
 
       <div class="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
         {#if editTab === 'flow'}
-          <div
-            class={`sticky top-0 z-10 mb-3 flex gap-2 rounded-xl border p-2 backdrop-blur ${
-              theme === 'dark'
-                ? 'border-white/10 bg-[#09090b]/90'
-                : 'border-zinc-200 bg-white/90'
-            }`}
-          >
+          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur">
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
@@ -999,69 +995,23 @@
             </button>
           </div>
 
-          <div
-            class={`overflow-hidden rounded-xl border ${
-              theme === 'dark' ? 'border-white/10 bg-white/[0.045]' : 'border-zinc-200 bg-zinc-50'
-            }`}
-          >
+          <div class="space-y-3" role="list">
             {#each flowPhrases as item (item.id)}
-              <div
-                class={`flex items-start gap-2 px-3 py-2.5 ${
-                  theme === 'dark' ? 'border-b border-white/8 last:border-b-0' : 'border-b border-zinc-200 last:border-b-0'
-                }`}
-              >
-                <textarea
-                  class={`min-h-16 min-w-0 flex-1 resize-none bg-transparent py-1 text-[15px] leading-snug outline-none ${
-                    theme === 'dark'
-                      ? 'text-zinc-100 placeholder:text-zinc-600'
-                      : 'text-zinc-950 placeholder:text-zinc-400'
-                  }`}
-                  value={item.text}
-                  on:input={(event) => updateFlowLine(item.id, event.currentTarget.value)}
-                ></textarea>
-                <div class="flex shrink-0 items-center gap-1 pt-0.5">
-                  <button
-                    class={`grid size-8 place-items-center rounded-full transition ${
-                      theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-200'
-                    }`}
-                    type="button"
-                    aria-label="上移"
-                    on:click={() => moveFlow(item.id, -1)}
-                  >
-                    <ChevronUp size={16} />
-                  </button>
-                  <button
-                    class={`grid size-8 place-items-center rounded-full transition ${
-                      theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-200'
-                    }`}
-                    type="button"
-                    aria-label="下移"
-                    on:click={() => moveFlow(item.id, 1)}
-                  >
-                    <ChevronDown size={16} />
-                  </button>
-                  <button
-                    class={`grid size-8 place-items-center rounded-full transition ${
-                      theme === 'dark' ? 'text-red-400 active:bg-red-500/10' : 'text-red-500 active:bg-red-50'
-                    }`}
-                    type="button"
-                    aria-label="删除流程词"
-                    on:click={() => deleteFlowLine(item.id)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
+              <EditablePhraseRow
+                id={item.id}
+                value={item.text}
+                {theme}
+                multiline
+                reorderable
+                placeholder="流程词"
+                on:change={(event) => updateFlowLine(item.id, event.detail)}
+                on:delete={() => deleteFlowLine(item.id)}
+                on:reorder={(event) => moveFlowNear(item.id, event.detail.targetId, event.detail.placement)}
+              />
             {/each}
           </div>
         {:else}
-          <div
-            class={`sticky top-0 z-10 mb-3 flex gap-2 rounded-xl border p-2 backdrop-blur ${
-              theme === 'dark'
-                ? 'border-white/10 bg-[#09090b]/90'
-                : 'border-zinc-200 bg-white/90'
-            }`}
-          >
+          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur">
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
@@ -1082,37 +1032,16 @@
             </button>
           </div>
 
-          <div
-            class={`overflow-hidden rounded-xl border ${
-              theme === 'dark' ? 'border-white/10 bg-white/[0.045]' : 'border-zinc-200 bg-zinc-50'
-            }`}
-          >
+          <div class="space-y-3" role="list">
             {#each fillerPhrases as phrase, index}
-              <div
-                class={`flex items-center gap-2 px-3 py-2.5 ${
-                  theme === 'dark' ? 'border-b border-white/8 last:border-b-0' : 'border-b border-zinc-200 last:border-b-0'
-                }`}
-              >
-                <input
-                  class={`min-w-0 flex-1 bg-transparent py-2 text-[15px] outline-none ${
-                    theme === 'dark'
-                      ? 'text-zinc-100 placeholder:text-zinc-600'
-                      : 'text-zinc-950 placeholder:text-zinc-400'
-                  }`}
-                  value={phrase}
-                  on:input={(event) => updateFiller(index, event.currentTarget.value)}
-                />
-                <button
-                  class={`grid size-9 shrink-0 place-items-center rounded-full transition ${
-                    theme === 'dark' ? 'text-red-400 active:bg-red-500/10' : 'text-red-500 active:bg-red-50'
-                  }`}
-                  type="button"
-                  aria-label="删除万能句"
-                  on:click={() => deleteFiller(index)}
-                >
-                  <X size={17} />
-                </button>
-              </div>
+              <EditablePhraseRow
+                id={`filler-${index}`}
+                value={phrase}
+                {theme}
+                placeholder="万能句"
+                on:change={(event) => updateFiller(index, event.detail)}
+                on:delete={() => deleteFiller(index)}
+              />
             {/each}
           </div>
         {/if}
