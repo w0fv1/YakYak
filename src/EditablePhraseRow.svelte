@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, tick } from 'svelte'
+  import { createEventDispatcher, onMount } from 'svelte'
   import { GripVertical, X } from 'lucide-svelte'
 
   type ThemeMode = 'dark' | 'light'
@@ -27,10 +27,9 @@
   let longPressTimer: ReturnType<typeof setTimeout> | undefined
   let textareaElement: HTMLTextAreaElement | undefined
 
-  $: if (multiline && textareaElement) {
-    value
-    void resizeTextarea()
-  }
+  onMount(() => {
+    resizeTextarea()
+  })
 
   function handlePointerDown(event: PointerEvent) {
     if (event.button !== 0 || removing) return
@@ -130,8 +129,12 @@
     dragY = 0
   }
 
-  async function resizeTextarea() {
-    await tick()
+  function handleTextAreaInput(event: Event) {
+    resizeTextarea()
+    dispatch('change', (event.currentTarget as HTMLTextAreaElement).value)
+  }
+
+  function resizeTextarea() {
     if (!textareaElement) return
 
     textareaElement.style.height = 'auto'
@@ -181,7 +184,7 @@
         }`}
         {placeholder}
         value={value}
-        on:input={(event) => dispatch('change', event.currentTarget.value)}
+        on:input={handleTextAreaInput}
       ></textarea>
     {:else}
       <input
