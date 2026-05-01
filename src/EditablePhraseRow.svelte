@@ -99,6 +99,13 @@
     textareaElement.style.height = 'auto'
     textareaElement.style.height = `${textareaElement.scrollHeight}px`
   }
+
+  function ignoreNonCancelableTouchStart(event: TouchEvent) {
+    if (event.cancelable) return
+
+    event.stopImmediatePropagation()
+    event.stopPropagation()
+  }
 </script>
 
 <div
@@ -163,6 +170,7 @@
         }`}
         data-drag-handle
         use:dragHandle
+        on:touchstart|capture={ignoreNonCancelableTouchStart}
         aria-label="长按拖动排序"
         type="button"
       >
