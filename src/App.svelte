@@ -770,18 +770,11 @@
 >
   <div class="mx-auto flex h-svh w-full max-w-[560px] flex-col overflow-hidden px-4 pb-4 pt-4 sm:px-6">
     <header class="flex shrink-0 items-center justify-between gap-3">
-      <div>
-        <p
-          class={`text-[11px] font-semibold uppercase tracking-[0.22em] ${
-            theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'
-          }`}
-        >
-          YakYak
-        </p>
-        <div class="mt-1 flex min-w-0 items-center gap-2">
+      <div class="min-w-0">
+        <div class="flex min-w-0 items-end gap-2">
           <h1 class="text-2xl font-black leading-none tracking-normal">说词儿啊！</h1>
           <a
-            class={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-black leading-none transition ${
+            class={`mb-[1px] shrink-0 rounded-full border px-2 py-1 text-[11px] font-black leading-none transition ${
               theme === 'dark'
                 ? 'border-white/10 bg-white/[0.06] text-cyan-200 hover:bg-white/10'
                 : 'border-zinc-200 bg-white text-cyan-700 hover:bg-zinc-50'
@@ -794,6 +787,13 @@
             @w0fv1
           </a>
         </div>
+        <p
+          class={`mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
+            theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'
+          }`}
+        >
+          YakYak
+        </p>
       </div>
 
       <div class="flex shrink-0 items-center gap-1.5">
