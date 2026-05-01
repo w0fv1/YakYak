@@ -249,6 +249,15 @@
   function getMainGuideSteps(): DriveStep[] {
     return [
       {
+        element: guideElement('main'),
+        popover: {
+          title: '说词儿啊！',
+          description: '帮主播盯住说话节奏、准备救场话术，并按流程推进直播，减少冷场和漏讲。',
+          side: 'over',
+          align: 'center',
+        },
+      },
+      {
         element: guideElement('[data-guide="timer"]'),
         popover: {
           title: '关注倒计时',
