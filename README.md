@@ -36,12 +36,29 @@ corepack pnpm check
 corepack pnpm build
 ```
 
+## Base URL
+
+The Vite build uses relative asset paths by default, so the same build works from both a custom domain root and GitHub Project Pages.
+
+To force a specific base URL:
+
+```bash
+YAKYAK_BASE_URL=/YakYak/ corepack pnpm build
+YAKYAK_BASE_URL=https://yakyak.w0fv1.dev/ corepack pnpm build
+```
+
 ## GitHub Pages
 
 The production build is configured for GitHub Project Pages at:
 
 ```text
 https://w0fv1.github.io/YakYak/
+```
+
+The Pages build also includes `public/CNAME` for:
+
+```text
+https://yakyak.w0fv1.dev/
 ```
 
 Every push to `main` runs `.github/workflows/deploy-pages.yml`, builds the app, and publishes `dist/` to the `pages` branch.
