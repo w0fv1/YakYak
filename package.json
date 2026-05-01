@@ -22,6 +22,7 @@
     "vite": "^8.0.10"
   },
   "dependencies": {
+    "driver.js": "^1.4.0",
     "lucide-svelte": "^1.0.1",
     "svelte-dnd-action": "^0.9.69",
     "svelte-sonner": "^1.1.1"

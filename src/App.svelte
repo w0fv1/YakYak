@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, tick as afterDomUpdate } from 'svelte'
   import { flip } from 'svelte/animate'
   import { fade, fly } from 'svelte/transition'
+  import { driver, type DriveStep, type Driver } from 'driver.js'
   import { Toaster, toast } from 'svelte-sonner'
   import {
     dragHandleZone,
@@ -10,6 +11,7 @@
   import EditablePhraseRow from './EditablePhraseRow.svelte'
   import {
     Check,
+    CircleHelp,
     Download,
     ListChecks,
     Moon,
@@ -35,6 +37,15 @@
     fillerPhrases: string[]
     flowPhrases: FlowLine[]
     visibleFlowIds: string[]
+    guide: GuideState
+  }
+  type GuideState = {
+    completed: boolean
+    timerHintSeen: boolean
+    flowSwipeHintSeen: boolean
+    editorHintSeen: boolean
+    importExportHintSeen: boolean
+    timerHintDismissCount: number
   }
   type ExportPayload = AppSnapshot & {
     app: 'YakYak'
@@ -71,6 +82,15 @@
     { id: 'flow-5', text: '收束：这一轮先总结到这里，我们马上进入下一个环节。' },
   ]
 
+  const defaultGuideState: GuideState = {
+    completed: false,
+    timerHintSeen: false,
+    flowSwipeHintSeen: false,
+    editorHintSeen: false,
+    importExportHintSeen: false,
+    timerHintDismissCount: 0,
+  }
+
   let duration = 8
   let remaining = 8
   let fillerPhrases = [...defaultFillers]
@@ -84,6 +104,8 @@
   let timerInput = '8'
   let newFiller = ''
   let newFlowText = ''
+  let guideState: GuideState = { ...defaultGuideState }
+  let activeGuide: Driver | undefined
   let hydrated = false
   let saveTimer: ReturnType<typeof setTimeout> | undefined
   let databasePromise: Promise<IDBDatabase> | undefined
@@ -103,7 +125,7 @@
   $: ringColor = isWarning ? '#ef4444' : '#22c55e'
   $: activeFlow = flowPhrases.filter((item) => visibleFlowIds.includes(item.id))
   $: finishedCount = flowPhrases.length - activeFlow.length
-  $: snapshot = buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds)
+  $: snapshot = buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState)
   $: if (hydrated) {
     queueSnapshotSave(snapshot)
   }
@@ -117,6 +139,7 @@
       if (saveTimer) {
         clearTimeout(saveTimer)
       }
+      activeGuide?.destroy()
     }
   })
 
@@ -127,8 +150,12 @@
     }
 
     hydrated = true
-    await writeSnapshot(buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds))
+    await writeSnapshot(buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState))
     clearLegacyStorage()
+
+    if (!guideState.completed) {
+      window.setTimeout(() => startMainGuide(true), 420)
+    }
   }
 
   function applySnapshot(snapshot: AppSnapshot) {
@@ -156,6 +183,7 @@
     visibleFlowIds = Array.isArray(snapshot.visibleFlowIds)
       ? snapshot.visibleFlowIds.filter((id) => knownIds.has(id))
       : flowPhrases.map((item) => item.id)
+    guideState = normalizeGuideState(snapshot.guide)
     currentFiller = ''
   }
 
@@ -165,6 +193,7 @@
     currentFillers: string[],
     currentFlow: FlowLine[],
     currentVisibleIds: string[],
+    currentGuide: GuideState,
   ): AppSnapshot {
     return {
       duration: currentDuration,
@@ -172,7 +201,195 @@
       fillerPhrases: currentFillers,
       flowPhrases: currentFlow,
       visibleFlowIds: currentVisibleIds,
+      guide: currentGuide,
     }
+  }
+
+  function normalizeGuideState(value: Partial<GuideState> | undefined): GuideState {
+    return {
+      ...defaultGuideState,
+      ...value,
+      completed: Boolean(value?.completed),
+      timerHintSeen: Boolean(value?.timerHintSeen),
+      flowSwipeHintSeen: Boolean(value?.flowSwipeHintSeen),
+      editorHintSeen: Boolean(value?.editorHintSeen),
+      importExportHintSeen: Boolean(value?.importExportHintSeen),
+      timerHintDismissCount: Number.isFinite(value?.timerHintDismissCount)
+        ? Number(value?.timerHintDismissCount)
+        : 0,
+    }
+  }
+
+  function updateGuideState(patch: Partial<GuideState>) {
+    guideState = {
+      ...guideState,
+      ...patch,
+    }
+  }
+
+  function guideElement(selector: string, fallback = 'main') {
+    return () =>
+      document.querySelector(selector) ??
+      document.querySelector(fallback) ??
+      document.body
+  }
+
+  function getMainGuideSteps(): DriveStep[] {
+    return [
+      {
+        element: guideElement('[data-guide="timer"]'),
+        popover: {
+          title: '盯住倒计时',
+          description: '圆环会一直循环。进入最后三分之一时，下面会出现万能句，提醒你及时接话。',
+          side: 'bottom',
+          align: 'center',
+        },
+      },
+      {
+        element: guideElement('[data-guide="duration-tag"]'),
+        popover: {
+          title: '调整说话间隔',
+          description: '点击倒计时可以设置秒数，比如 5 秒、8 秒或 12 秒。',
+          side: 'left',
+          align: 'start',
+        },
+      },
+      {
+        element: guideElement('[data-guide="active-flow-item"]', '[data-guide="flow-section"]'),
+        popover: {
+          title: '按流程往下讲',
+          description: '最上面的流程词会高亮。讲完一条，左右滑动即可标记为已完成。',
+          side: 'top',
+          align: 'center',
+        },
+      },
+      {
+        element: guideElement('[data-guide="library-actions"]'),
+        popover: {
+          title: '备份你的词库',
+          description: '导出 JSON 可以备份词库；换设备时再导入，就能继续使用。',
+          side: 'bottom',
+          align: 'end',
+        },
+      },
+      {
+        element: guideElement('[data-guide="edit-button"]'),
+        popover: {
+          title: '把它改成你的话',
+          description: '编辑词库可以添加流程词和万能句。流程词支持长按排序。',
+          side: 'bottom',
+          align: 'end',
+        },
+      },
+    ]
+  }
+
+  function getEditorGuideSteps(): DriveStep[] {
+    return [
+      {
+        element: guideElement('[data-guide="editor-tabs"]'),
+        popover: {
+          title: '两类词库',
+          description: '流程词用于直播步骤，万能句用于倒计时变红时随机提醒。',
+          side: 'bottom',
+          align: 'center',
+        },
+      },
+      {
+        element: guideElement('[data-guide="editor-add"]'),
+        popover: {
+          title: '快速新增',
+          description: '输入一句话后点加号，就会保存到当前词库。',
+          side: 'bottom',
+          align: 'center',
+        },
+      },
+      {
+        element: guideElement('[data-guide="editor-list"]'),
+        popover: {
+          title: '整理顺序',
+          description: '流程词可以按住右侧手柄上下拖动排序；左右滑动可以删除。',
+          side: 'top',
+          align: 'center',
+        },
+      },
+    ]
+  }
+
+  function createGuide(
+    steps: DriveStep[],
+    options: {
+      doneText?: string
+      onFinished?: () => void
+      onDestroyed?: () => void
+    } = {},
+  ) {
+    let guide: Driver | undefined
+
+    guide = driver({
+      steps,
+      animate: true,
+      smoothScroll: false,
+      allowClose: true,
+      overlayColor: '#020617',
+      overlayOpacity: theme === 'dark' ? 0.72 : 0.38,
+      stagePadding: 8,
+      stageRadius: 14,
+      popoverClass: `yakyak-driver yakyak-driver-${theme}`,
+      showButtons: ['previous', 'next', 'close'],
+      showProgress: true,
+      progressText: '{{current}}/{{total}}',
+      nextBtnText: '下一步',
+      prevBtnText: '上一步',
+      doneBtnText: options.doneText ?? '知道了',
+      onDestroyed: () => {
+        const activeIndex = guide?.getActiveIndex()
+        activeGuide = undefined
+        options.onDestroyed?.()
+
+        if (activeIndex !== undefined && activeIndex >= steps.length - 1) {
+          options.onFinished?.()
+        }
+      },
+    })
+
+    return guide
+  }
+
+  function startMainGuide(markCompletedOnFinish = false) {
+    activeGuide?.destroy()
+    isTimerOpen = false
+    isEditOpen = false
+
+    void afterDomUpdate().then(() => {
+      activeGuide = createGuide(getMainGuideSteps(), {
+        doneText: '开始使用',
+        onFinished: () => {
+          if (!markCompletedOnFinish) return
+
+          updateGuideState({
+            completed: true,
+            timerHintSeen: true,
+            flowSwipeHintSeen: true,
+            importExportHintSeen: true,
+          })
+        },
+      })
+      activeGuide.drive()
+    })
+  }
+
+  function startEditorGuide() {
+    if (!isEditOpen || guideState.editorHintSeen) return
+
+    activeGuide?.destroy()
+    activeGuide = createGuide(getEditorGuideSteps(), {
+      doneText: '知道了',
+      onDestroyed: () => {
+        updateGuideState({ editorHintSeen: true })
+      },
+    })
+    activeGuide.drive()
   }
 
   function queueSnapshotSave(nextSnapshot: AppSnapshot) {
@@ -243,6 +460,7 @@
       fillerPhrases: savedFillers?.length ? savedFillers : [...defaultFillers],
       flowPhrases: nextFlow,
       visibleFlowIds: nextFlow.map((item) => item.id),
+      guide: { ...defaultGuideState },
     }
   }
 
@@ -287,6 +505,7 @@
   }
 
   function openTimerSettings() {
+    updateGuideState({ timerHintSeen: true })
     timerInput = String(duration)
     isTimerOpen = true
   }
@@ -304,11 +523,13 @@
   }
 
   function exportData() {
+    const nextGuideState = { ...guideState, importExportHintSeen: true }
+    guideState = nextGuideState
     const payload: ExportPayload = {
       app: 'YakYak',
       version: 1,
       exportedAt: new Date().toISOString(),
-      ...snapshot,
+      ...buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, nextGuideState),
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json;charset=utf-8',
@@ -338,8 +559,9 @@
       const snapshot = normalizeImportPayload(payload)
 
       applySnapshot(snapshot)
+      updateGuideState({ importExportHintSeen: true })
       hydrated = true
-      await writeSnapshot(snapshot)
+      await writeSnapshot(buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState))
       toast.success('已导入并保存到浏览器数据库')
     } catch {
       toast.error('导入失败，请确认是 YakYak 导出的 JSON 文件')
@@ -373,6 +595,7 @@
       fillerPhrases: payload.fillerPhrases.filter((item): item is string => typeof item === 'string'),
       flowPhrases,
       visibleFlowIds,
+      guide: guideState,
     }
   }
 
@@ -384,6 +607,7 @@
 
   function removeForRound(id: string) {
     if (completingFlowIds.includes(id)) return
+    updateGuideState({ flowSwipeHintSeen: true })
 
     const finishDirection = swipeX >= 0 ? 1 : -1
     activeSwipeId = id
@@ -406,8 +630,15 @@
   }
 
   function openEditor(tab: EditTab = 'flow') {
+    const shouldShowEditorGuide = !guideState.editorHintSeen
     editTab = tab
     isEditOpen = true
+
+    if (shouldShowEditorGuide) {
+      void afterDomUpdate().then(() => {
+        window.setTimeout(startEditorGuide, 180)
+      })
+    }
   }
 
   function addFiller() {
@@ -536,30 +767,49 @@
 
       <div class="flex shrink-0 items-center gap-1.5">
         <button
-          class={`grid size-9 place-items-center rounded-full border transition ${
+          class={`relative grid size-9 place-items-center rounded-full border transition ${
             theme === 'dark'
               ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
               : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
           }`}
-          aria-label="导入数据"
+          aria-label="使用引导"
           type="button"
-          on:click={selectImportFile}
+          data-guide="help-button"
+          on:click={() => startMainGuide(true)}
         >
-          <Upload size={17} />
+          <CircleHelp size={17} />
+          {#if !guideState.completed}
+            <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-cyan-300"></span>
+          {/if}
         </button>
 
-        <button
-          class={`grid size-9 place-items-center rounded-full border transition ${
-            theme === 'dark'
-              ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
-              : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
-          }`}
-          aria-label="导出数据"
-          type="button"
-          on:click={exportData}
-        >
-          <Download size={17} />
-        </button>
+        <div class="flex items-center gap-1.5" data-guide="library-actions">
+          <button
+            class={`grid size-9 place-items-center rounded-full border transition ${
+              theme === 'dark'
+                ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
+                : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
+            }`}
+            aria-label="导入数据"
+            type="button"
+            on:click={selectImportFile}
+          >
+            <Upload size={17} />
+          </button>
+
+          <button
+            class={`grid size-9 place-items-center rounded-full border transition ${
+              theme === 'dark'
+                ? 'border-white/10 bg-white/[0.06] text-zinc-100 active:bg-white/10'
+                : 'border-zinc-200 bg-white text-zinc-900 active:bg-zinc-100'
+            }`}
+            aria-label="导出数据"
+            type="button"
+            on:click={exportData}
+          >
+            <Download size={17} />
+          </button>
+        </div>
 
         <button
           class={`grid size-9 place-items-center rounded-full border transition ${
@@ -586,6 +836,7 @@
           }`}
           aria-label="编辑词库"
           type="button"
+          data-guide="edit-button"
           on:click={() => openEditor('flow')}
         >
           <Pencil size={17} />
@@ -599,6 +850,7 @@
           class="relative grid size-[min(45vw,182px)] max-h-[182px] min-h-[134px] min-w-[134px] place-items-center rounded-full"
           aria-label="设置倒计时秒数"
           type="button"
+          data-guide="timer"
           on:click={openTimerSettings}
         >
           <svg class="absolute inset-0 size-full -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
@@ -637,8 +889,9 @@
               ? 'bg-red-500/15 text-red-400'
               : theme === 'dark'
                 ? 'bg-emerald-500/15 text-emerald-400'
-                : 'bg-emerald-600/10 text-emerald-700'
+              : 'bg-emerald-600/10 text-emerald-700'
           }`}
+          data-guide="duration-tag"
         >
           <TimerReset size={14} />
           {duration}s
@@ -660,7 +913,7 @@
       </div>
     </section>
 
-    <section class="flex min-h-0 flex-1 flex-col">
+    <section class="flex min-h-0 flex-1 flex-col" data-guide="flow-section">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <div
@@ -712,6 +965,7 @@
           <div class="space-y-2.5">
             {#each activeFlow as item, index (item.id)}
               <article
+                data-guide={index === 0 ? 'active-flow-item' : undefined}
                 class={`group relative touch-pan-y select-none overflow-hidden rounded-lg border transition-all duration-[250ms] ease-out ${
                   index === 0
                     ? theme === 'dark'
@@ -943,6 +1197,7 @@
         class={`mx-3 grid shrink-0 grid-cols-2 gap-1 rounded-xl p-1 ${
           theme === 'dark' ? 'bg-white/[0.06]' : 'bg-zinc-100'
         }`}
+        data-guide="editor-tabs"
       >
         <button
           class={`rounded-lg py-2.5 text-sm font-black transition ${
@@ -978,7 +1233,7 @@
 
       <div class="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
         {#if editTab === 'flow'}
-          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur">
+          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur" data-guide="editor-add">
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
@@ -1002,6 +1257,7 @@
           <div
             class="space-y-3"
             aria-label="流程词排序"
+            data-guide="editor-list"
             use:dragHandleZone={{
               items: flowPhrases,
               flipDurationMs: editorFlipDurationMs,
@@ -1033,7 +1289,7 @@
             {/each}
           </div>
         {:else}
-          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur">
+          <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur" data-guide="editor-add">
             <input
               class={`min-w-0 flex-1 rounded-lg border px-3 py-3 text-sm outline-none ${
                 theme === 'dark'
@@ -1054,7 +1310,7 @@
             </button>
           </div>
 
-          <div class="space-y-3" role="list">
+          <div class="space-y-3" role="list" data-guide="editor-list">
             {#each fillerPhrases as phrase, index}
               <EditablePhraseRow
                 id={`filler-${index}`}

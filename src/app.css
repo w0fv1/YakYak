@@ -1,3 +1,4 @@
+@import 'driver.js/dist/driver.css';
 @import 'tailwindcss';
 
 :root {
@@ -60,6 +61,128 @@ button {
 
 .modal-panel {
   will-change: transform, opacity;
+}
+
+.driver-popover.yakyak-driver {
+  max-width: min(320px, calc(100vw - 32px));
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 18px;
+  padding: 14px;
+  color: #f4f4f5;
+  background: rgba(9, 9, 11, 0.94);
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.driver-popover.yakyak-driver-light {
+  border-color: rgba(8, 145, 178, 0.24);
+  color: #18181b;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 22px 55px rgba(39, 39, 42, 0.16),
+    0 0 0 1px rgba(8, 145, 178, 0.08);
+}
+
+.driver-popover.yakyak-driver .driver-popover-title {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.driver-popover.yakyak-driver .driver-popover-description {
+  margin-top: 8px;
+  color: #d4d4d8;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-description {
+  color: #52525b;
+}
+
+.driver-popover.yakyak-driver .driver-popover-footer {
+  margin-top: 14px;
+}
+
+.driver-popover.yakyak-driver .driver-popover-progress-text {
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.driver-popover.yakyak-driver .driver-popover-navigation-btns {
+  gap: 8px;
+}
+
+.driver-popover.yakyak-driver button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  text-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.driver-popover.yakyak-driver .driver-popover-prev-btn {
+  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-prev-btn {
+  color: #3f3f46;
+  background: #f4f4f5;
+}
+
+.driver-popover.yakyak-driver .driver-popover-next-btn {
+  color: #052e16;
+  background: #22d3ee;
+}
+
+.driver-popover.yakyak-driver .driver-popover-close-btn {
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #a1a1aa;
+  background: transparent;
+}
+
+.driver-popover.yakyak-driver .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: rgba(9, 9, 11, 0.94);
+}
+
+.driver-popover.yakyak-driver .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: rgba(9, 9, 11, 0.94);
+}
+
+.driver-popover.yakyak-driver .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: rgba(9, 9, 11, 0.94);
+}
+
+.driver-popover.yakyak-driver .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: rgba(9, 9, 11, 0.94);
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: rgba(255, 255, 255, 0.96);
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: rgba(255, 255, 255, 0.96);
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: rgba(255, 255, 255, 0.96);
+}
+
+.driver-popover.yakyak-driver-light .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: rgba(255, 255, 255, 0.96);
 }
 
 #dnd-action-dragged-el,
