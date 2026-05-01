@@ -278,7 +278,7 @@
       {
         element: guideElement('[data-guide="edit-button"]'),
         popover: {
-          title: '把它改成你的话',
+          title: '把它改成你的词儿',
           description: '编辑词库可以添加流程词和万能句。流程词支持长按排序。',
           side: 'bottom',
           align: 'end',
