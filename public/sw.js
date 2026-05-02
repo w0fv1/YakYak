@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yakyak-shell-v1'
+const CACHE_NAME = 'yakyak-shell-v3'
 const CORE_ASSETS = ['./', './manifest.webmanifest', './favicon.svg']
 
 self.addEventListener('install', (event) => {
