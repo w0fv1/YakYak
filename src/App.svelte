@@ -33,6 +33,10 @@
     id: string
     text: string
   }
+  type FillerLine = {
+    id: string
+    text: string
+  }
   type AppSnapshot = {
     duration: number
     theme: ThemeMode
@@ -110,7 +114,8 @@
 
   let duration = defaultDuration
   let remaining = defaultDuration
-  let fillerPhrases = [...defaultFillers]
+  let fillerLines = buildFillerLines(defaultFillers)
+  let fillerPhrases = fillerLines.map((item) => item.text)
   let flowPhrases = defaultFlow.map((item) => ({ ...item }))
   let visibleFlowIds = flowPhrases.map((item) => item.id)
   let currentFiller = ''
@@ -135,6 +140,7 @@
   let importFileInput: HTMLInputElement | undefined
 
   let activeSwipeId = ''
+  let activeSwipePointerId: number | undefined
   let gestureMode: GestureMode = 'idle'
   let swipeStartX = 0
   let swipeStartY = 0
@@ -146,6 +152,7 @@
   $: isWarning = remaining <= warningThreshold
   $: progress = remaining / duration
   $: ringColor = isWarning ? '#ef4444' : '#22c55e'
+  $: fillerPhrases = fillerLines.map((item) => item.text)
   $: activeFlow = flowPhrases.filter((item) => visibleFlowIds.includes(item.id))
   $: finishedCount = flowPhrases.length - activeFlow.length
   $: snapshot = buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState)
@@ -227,8 +234,8 @@
         text: item.text.trim(),
       }))
 
-    fillerPhrases = nextFillers.length ? nextFillers : [...defaultFillers]
-    flowPhrases = nextFlow.length ? nextFlow : defaultFlow.map((item) => ({ ...item }))
+    fillerLines = buildFillerLines(nextFillers)
+    flowPhrases = nextFlow
 
     const knownIds = new Set(flowPhrases.map((item) => item.id))
     visibleFlowIds = Array.isArray(snapshot.visibleFlowIds)
@@ -494,6 +501,24 @@
     }, 180)
   }
 
+  function saveSnapshotNow(
+    nextSnapshot = buildSnapshot(
+      duration,
+      theme,
+      fillerLines.map((item) => item.text),
+      flowPhrases,
+      visibleFlowIds,
+      guideState,
+    ),
+  ) {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = undefined
+    }
+
+    void writeSnapshot(nextSnapshot)
+  }
+
   function openDatabase() {
     databasePromise ??= new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(dbName, dbVersion)
@@ -542,17 +567,19 @@
     const savedFlow = readStoredArray<FlowLine>(flowStorageKey)
     const hasSavedTheme = savedTheme === 'light' || savedTheme === 'dark'
     const hasSavedDuration = Number.isFinite(savedDuration)
+    const hasSavedFillers = Array.isArray(savedFillers)
+    const hasSavedFlow = Array.isArray(savedFlow)
 
-    if (!savedFillers?.length && !savedFlow?.length && !hasSavedDuration && !hasSavedTheme) {
+    if (!hasSavedFillers && !hasSavedFlow && !hasSavedDuration && !hasSavedTheme) {
       return null
     }
 
-    const nextFlow = savedFlow?.length ? savedFlow : defaultFlow
+    const nextFlow = hasSavedFlow ? savedFlow : defaultFlow
 
     return {
       duration: normalizeDuration(savedDuration),
       theme: savedTheme === 'light' ? 'light' : 'dark',
-      fillerPhrases: savedFillers?.length ? savedFillers : [...defaultFillers],
+      fillerPhrases: hasSavedFillers ? savedFillers : [...defaultFillers],
       flowPhrases: nextFlow,
       visibleFlowIds: nextFlow.map((item) => item.id),
       guide: { ...defaultGuideState },
@@ -593,7 +620,7 @@
 
   function randomFiller() {
     if (!fillerPhrases.length) {
-      return '先把这个节奏稳住。'
+      return '说词儿啊！'
     }
 
     return fillerPhrases[Math.floor(Math.random() * fillerPhrases.length)]
@@ -774,7 +801,7 @@
   function addFiller() {
     const text = newFiller.trim()
     if (!text) return
-    fillerPhrases = [...fillerPhrases, text]
+    fillerLines = [...fillerLines, { id: makeId('filler'), text }]
     newFiller = ''
   }
 
@@ -791,17 +818,19 @@
     flowPhrases = flowPhrases.map((item) => (item.id === id ? { ...item, text } : item))
   }
 
-  function updateFiller(index: number, text: string) {
-    fillerPhrases = fillerPhrases.map((item, itemIndex) => (itemIndex === index ? text : item))
+  function updateFiller(id: string, text: string) {
+    fillerLines = fillerLines.map((item) => (item.id === id ? { ...item, text } : item))
   }
 
   function deleteFlowLine(id: string) {
     flowPhrases = flowPhrases.filter((item) => item.id !== id)
     visibleFlowIds = visibleFlowIds.filter((itemId) => itemId !== id)
+    saveSnapshotNow()
   }
 
-  function deleteFiller(index: number) {
-    fillerPhrases = fillerPhrases.filter((_, itemIndex) => itemIndex !== index)
+  function deleteFiller(id: string) {
+    fillerLines = fillerLines.filter((item) => item.id !== id)
+    saveSnapshotNow()
   }
 
   function handleFlowSort(event: CustomEvent<{ items: FlowLine[] }>) {
@@ -820,6 +849,8 @@
     if (completingFlowIds.includes(id)) return
     if (event.button !== 0) return
 
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    activeSwipePointerId = event.pointerId
     swipeStartX = event.clientX
     swipeStartY = event.clientY
     activeSwipeId = id
@@ -828,6 +859,7 @@
   }
 
   function handlePointerMove(event: PointerEvent, id: string) {
+    if (activeSwipePointerId !== event.pointerId) return
     if (activeSwipeId !== id) return
 
     const dx = event.clientX - swipeStartX
@@ -853,7 +885,9 @@
     }
   }
 
-  function handlePointerUp(id: string) {
+  function handlePointerUp(event: PointerEvent, id: string) {
+    if (activeSwipePointerId !== event.pointerId) return
+
     if (gestureMode === 'swipe' && activeSwipeId === id && Math.abs(swipeX) > 88) {
       removeForRound(id)
       return
@@ -864,12 +898,20 @@
 
   function clearGesture() {
     activeSwipeId = ''
+    activeSwipePointerId = undefined
     gestureMode = 'idle'
     swipeX = 0
   }
 
   function makeId(prefix: string, index = Date.now()) {
     return `${prefix}-${index}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  function buildFillerLines(phrases: string[]): FillerLine[] {
+    return phrases.map((text, index) => ({
+      id: makeId('filler', index),
+      text,
+    }))
   }
 </script>
 
@@ -1124,7 +1166,7 @@
                 }`}
                 on:pointerdown={(event) => handlePointerDown(event, item.id)}
                 on:pointermove={(event) => handlePointerMove(event, item.id)}
-                on:pointerup={() => handlePointerUp(item.id)}
+                on:pointerup={(event) => handlePointerUp(event, item.id)}
                 on:pointercancel={clearGesture}
               >
                 <div
@@ -1173,6 +1215,33 @@
               </article>
             {/each}
           </div>
+        {:else if flowPhrases.length}
+          <div
+            class={`grid min-h-[180px] place-items-center rounded-lg border border-dashed px-6 text-center ${
+              theme === 'dark'
+                ? 'border-white/12 bg-white/[0.03] text-zinc-400'
+                : 'border-zinc-300 bg-white/70 text-zinc-500'
+            }`}
+          >
+            <div class="flex flex-col items-center gap-3">
+              <div>
+                <p class="text-sm font-black">本轮已完成</p>
+                <p class="mt-1 text-xs font-semibold opacity-75">重来后会恢复本轮流程词。</p>
+              </div>
+              <button
+                class={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
+                  theme === 'dark'
+                    ? 'bg-zinc-100 text-zinc-950 active:bg-white'
+                    : 'bg-zinc-950 text-white active:bg-zinc-800'
+                }`}
+                type="button"
+                on:click={resetRound}
+              >
+                <RefreshCcw size={16} />
+                重来
+              </button>
+            </div>
+          </div>
         {:else}
           <div
             class={`grid min-h-[180px] place-items-center rounded-lg border border-dashed px-6 text-center ${
@@ -1181,18 +1250,24 @@
                 : 'border-zinc-300 bg-white/70 text-zinc-500'
             }`}
           >
-            <button
-              class={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
-                theme === 'dark'
-                  ? 'bg-zinc-100 text-zinc-950 active:bg-white'
-                  : 'bg-zinc-950 text-white active:bg-zinc-800'
-              }`}
-              type="button"
-              on:click={resetRound}
-            >
-              <RefreshCcw size={16} />
-              重来
-            </button>
+            <div class="flex flex-col items-center gap-3">
+              <div>
+                <p class="text-sm font-black">没有流程词</p>
+                <p class="mt-1 text-xs font-semibold opacity-75">去编辑词库添加本轮要讲的内容。</p>
+              </div>
+              <button
+                class={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
+                  theme === 'dark'
+                    ? 'bg-zinc-100 text-zinc-950 active:bg-white'
+                    : 'bg-zinc-950 text-white active:bg-zinc-800'
+                }`}
+                type="button"
+                on:click={() => openEditor('flow')}
+              >
+                <Pencil size={16} />
+                编辑流程词
+              </button>
+            </div>
           </div>
         {/if}
       </div>
@@ -1664,16 +1739,18 @@
             </button>
           </div>
 
-          <div class="space-y-3" role="list" data-guide="editor-list">
-            {#each fillerPhrases as phrase, index}
-              <EditablePhraseRow
-                id={`filler-${index}`}
-                value={phrase}
-                {theme}
-                placeholder="万能句"
-                on:change={(event) => updateFiller(index, event.detail)}
-                on:delete={() => deleteFiller(index)}
-              />
+          <div class="space-y-3" role="list" aria-label="万能句列表" data-guide="editor-list">
+            {#each fillerLines as item (item.id)}
+              <div animate:flip={{ duration: editorFlipDurationMs }} aria-label={item.text || '万能句'}>
+                <EditablePhraseRow
+                  id={item.id}
+                  value={item.text}
+                  {theme}
+                  placeholder="万能句"
+                  on:change={(event) => updateFiller(item.id, event.detail)}
+                  on:delete={() => deleteFiller(item.id)}
+                />
+              </div>
             {/each}
           </div>
         {/if}

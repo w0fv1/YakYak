@@ -23,6 +23,7 @@
   let startY = 0
   let swipeX = 0
   let removing = false
+  let activePointerId: number | undefined
   let textareaElement: HTMLTextAreaElement | undefined
 
   onMount(() => {
@@ -35,6 +36,8 @@
     const target = event.target as HTMLElement
     if (target.closest('[data-drag-handle]')) return
 
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    activePointerId = event.pointerId
     startX = event.clientX
     startY = event.clientY
     swipeX = 0
@@ -42,6 +45,7 @@
   }
 
   function handlePointerMove(event: PointerEvent) {
+    if (activePointerId !== event.pointerId) return
     if (mode === 'idle' || removing) return
 
     const dx = event.clientX - startX
@@ -62,7 +66,9 @@
     }
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(event: PointerEvent) {
+    if (activePointerId !== event.pointerId) return
+
     if (mode === 'swipe' && Math.abs(swipeX) > 88) {
       completeDelete()
       return
@@ -86,6 +92,7 @@
   function clearGesture() {
     mode = 'idle'
     swipeX = 0
+    activePointerId = undefined
   }
 
   function handleTextAreaInput(event: Event) {
