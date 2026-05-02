@@ -14,6 +14,7 @@
     Download,
     HelpCircle,
     ListChecks,
+    Maximize2,
     Moon,
     Pencil,
     Plus,
@@ -64,6 +65,13 @@
       outcome: 'accepted' | 'dismissed'
       platform: string
     }>
+  }
+  type FullscreenDocument = Document & {
+    webkitFullscreenElement?: Element | null
+    webkitExitFullscreen?: () => Promise<void>
+  }
+  type FullscreenElement = HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>
   }
   type ImportPreview = {
     snapshot: AppSnapshot
@@ -133,6 +141,7 @@
   let deferredInstallPrompt: BeforeInstallPromptEvent | undefined
   let canInstallPwa = false
   let isPwaInstalled = false
+  let isFullscreen = false
   let importPreview: ImportPreview | undefined
   let hydrated = false
   let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -155,6 +164,7 @@
   $: fillerPhrases = fillerLines.map((item) => item.text)
   $: activeFlow = flowPhrases.filter((item) => visibleFlowIds.includes(item.id))
   $: finishedCount = flowPhrases.length - activeFlow.length
+  $: installStatusText = getInstallStatusText()
   $: snapshot = buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState)
   $: if (hydrated) {
     queueSnapshotSave(snapshot)
@@ -174,15 +184,29 @@
       isPwaInstalled = true
       toast.success('已添加到主屏幕')
     }
+    const updateStandaloneState = () => {
+      if (isStandaloneDisplay()) {
+        isPwaInstalled = true
+      }
+    }
+    const handleFullscreenChange = () => {
+      isFullscreen = Boolean(getFullscreenElement())
+    }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
+    document.addEventListener('visibilitychange', updateStandaloneState)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
     void loadPersistedSnapshot()
     const timer = setInterval(tick, 1000)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
+      document.removeEventListener('visibilitychange', updateStandaloneState)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
       clearInterval(timer)
       if (saveTimer) {
         clearTimeout(saveTimer)
@@ -468,6 +492,18 @@
     )
   }
 
+  function getInstallStatusText() {
+    if (isPwaInstalled || isStandaloneDisplay()) {
+      return '已检测到主屏幕/独立窗口运行'
+    }
+
+    if (canInstallPwa) {
+      return '可安装；小米/MIUI 需允许浏览器创建桌面快捷方式'
+    }
+
+    return '浏览器菜单添加；小米/MIUI 需开启桌面快捷方式权限'
+  }
+
   async function installPwa() {
     if (isPwaInstalled || isStandaloneDisplay()) {
       toast.success('YakYak 已经在主屏幕中运行')
@@ -476,7 +512,7 @@
     }
 
     if (!deferredInstallPrompt) {
-      toast.info('请用浏览器菜单里的“添加到主屏幕”安装 YakYak')
+      toast.info('请用浏览器菜单添加；小米/MIUI 需允许浏览器创建桌面快捷方式')
       return
     }
 
@@ -486,8 +522,39 @@
     canInstallPwa = false
 
     if (choice.outcome === 'accepted') {
-      toast.success('已添加到主屏幕')
-      isPwaInstalled = true
+      toast.info('浏览器已接受安装请求；是否成功以系统添加结果为准')
+      return
+    }
+
+    toast.info('未添加到主屏幕')
+  }
+
+  function getFullscreenElement() {
+    const fullscreenDocument = document as FullscreenDocument
+    return document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null
+  }
+
+  async function requestFullscreen() {
+    if (getFullscreenElement()) {
+      toast.info('已经是全屏显示')
+      isFullscreen = true
+      return
+    }
+
+    const root = document.documentElement as FullscreenElement
+    const request = root.requestFullscreen ?? root.webkitRequestFullscreen
+
+    if (!request) {
+      toast.info('当前浏览器不支持网页全屏')
+      return
+    }
+
+    try {
+      await request.call(root)
+      isFullscreen = true
+      toast.success('已进入全屏')
+    } catch {
+      toast.info('浏览器没有允许全屏，请再点一次或检查权限')
     }
   }
 
@@ -1346,7 +1413,37 @@
           <span class="min-w-0">
             <span class="block text-sm font-black">添加到主屏幕</span>
             <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
-              {isPwaInstalled ? '已安装为桌面应用' : canInstallPwa ? '像 App 一样从桌面打开' : '浏览器菜单也可以添加'}
+              {installStatusText}
+            </span>
+          </span>
+        </button>
+
+        <div
+          class={`rounded-lg border px-4 py-3 text-xs font-semibold leading-relaxed ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.035] text-zinc-400'
+              : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+          }`}
+        >
+          小米/MIUI 如果添加失败，请到系统设置里给当前浏览器开启“创建桌面快捷方式”或“桌面快捷方式”权限。网页无法读取手机桌面图标，只能检测当前是否从主屏幕独立窗口打开。
+        </div>
+
+        <button
+          class={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+            theme === 'dark'
+              ? 'border-white/10 bg-white/[0.06] active:bg-white/10'
+              : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
+          }`}
+          type="button"
+          on:click={requestFullscreen}
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-violet-400 text-zinc-950">
+            <Maximize2 size={18} />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-black">进入全屏</span>
+            <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              {isFullscreen ? '当前正在全屏显示' : '隐藏浏览器界面，专注看词'}
             </span>
           </span>
         </button>
