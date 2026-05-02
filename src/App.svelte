@@ -15,6 +15,7 @@
     HelpCircle,
     ListChecks,
     Maximize2,
+    Minimize2,
     Moon,
     Pencil,
     Plus,
@@ -68,6 +69,7 @@
   }
   type FullscreenDocument = Document & {
     webkitFullscreenElement?: Element | null
+    webkitExitFullscreen?: () => Promise<void>
   }
   type FullscreenElement = HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void>
@@ -520,13 +522,16 @@
     return document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null
   }
 
-  async function requestFullscreen() {
+  async function toggleFullscreen() {
     if (getFullscreenElement()) {
-      toast.info('已经是全屏显示')
-      isFullscreen = true
+      await exitFullscreen()
       return
     }
 
+    await requestFullscreen()
+  }
+
+  async function requestFullscreen() {
     updateViewportHeight()
     const root = (document.querySelector('#app') ?? document.documentElement) as FullscreenElement
     const request = root.requestFullscreen ?? root.webkitRequestFullscreen
@@ -543,6 +548,25 @@
       toast.success('已进入全屏')
     } catch {
       toast.info('浏览器没有允许全屏，请再点一次或检查权限')
+    }
+  }
+
+  async function exitFullscreen() {
+    const fullscreenDocument = document as FullscreenDocument
+    const exit = document.exitFullscreen ?? fullscreenDocument.webkitExitFullscreen
+
+    if (!exit) {
+      toast.info('当前浏览器不支持退出全屏按钮，请用系统返回键退出')
+      return
+    }
+
+    try {
+      await exit.call(document)
+      isFullscreen = false
+      updateViewportHeight()
+      toast.success('已退出全屏')
+    } catch {
+      toast.info('退出全屏失败，请用系统返回键退出')
     }
   }
 
@@ -1423,15 +1447,19 @@
               : 'border-zinc-200 bg-zinc-50 active:bg-zinc-100'
           }`}
           type="button"
-          on:click={requestFullscreen}
+          on:click={toggleFullscreen}
         >
           <span class="grid size-10 shrink-0 place-items-center rounded-full bg-violet-400 text-zinc-950">
-            <Maximize2 size={18} />
+            {#if isFullscreen}
+              <Minimize2 size={18} />
+            {:else}
+              <Maximize2 size={18} />
+            {/if}
           </span>
           <span class="min-w-0">
-            <span class="block text-sm font-black">进入全屏</span>
+            <span class="block text-sm font-black">{isFullscreen ? '退出全屏' : '进入全屏'}</span>
             <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
-              {isFullscreen ? '当前正在全屏显示' : '隐藏浏览器界面，专注看词'}
+              {isFullscreen ? '恢复浏览器界面' : '隐藏浏览器界面，专注看词'}
             </span>
           </span>
         </button>
