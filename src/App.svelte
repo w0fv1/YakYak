@@ -68,7 +68,6 @@
   }
   type FullscreenDocument = Document & {
     webkitFullscreenElement?: Element | null
-    webkitExitFullscreen?: () => Promise<void>
   }
   type FullscreenElement = HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void>
@@ -140,7 +139,6 @@
   let activeGuide: Driver | undefined
   let deferredInstallPrompt: BeforeInstallPromptEvent | undefined
   let canInstallPwa = false
-  let isPwaInstalled = false
   let isFullscreen = false
   let importPreview: ImportPreview | undefined
   let hydrated = false
@@ -164,15 +162,13 @@
   $: fillerPhrases = fillerLines.map((item) => item.text)
   $: activeFlow = flowPhrases.filter((item) => visibleFlowIds.includes(item.id))
   $: finishedCount = flowPhrases.length - activeFlow.length
-  $: installStatusText = getInstallStatusText()
+  $: updateDocumentTheme(theme)
   $: snapshot = buildSnapshot(duration, theme, fillerPhrases, flowPhrases, visibleFlowIds, guideState)
   $: if (hydrated) {
     queueSnapshotSave(snapshot)
   }
 
   onMount(() => {
-    isPwaInstalled = isStandaloneDisplay()
-
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault()
       deferredInstallPrompt = event as BeforeInstallPromptEvent
@@ -181,21 +177,17 @@
     const handleAppInstalled = () => {
       deferredInstallPrompt = undefined
       canInstallPwa = false
-      isPwaInstalled = true
-      toast.success('已添加到主屏幕')
-    }
-    const updateStandaloneState = () => {
-      if (isStandaloneDisplay()) {
-        isPwaInstalled = true
-      }
     }
     const handleFullscreenChange = () => {
       isFullscreen = Boolean(getFullscreenElement())
+      updateViewportHeight()
     }
 
+    updateViewportHeight()
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
-    document.addEventListener('visibilitychange', updateStandaloneState)
+    window.addEventListener('resize', updateViewportHeight)
+    window.visualViewport?.addEventListener('resize', updateViewportHeight)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
     void loadPersistedSnapshot()
@@ -204,7 +196,8 @@
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
-      document.removeEventListener('visibilitychange', updateStandaloneState)
+      window.removeEventListener('resize', updateViewportHeight)
+      window.visualViewport?.removeEventListener('resize', updateViewportHeight)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
       clearInterval(timer)
@@ -485,34 +478,9 @@
     activeGuide.drive()
   }
 
-  function isStandaloneDisplay() {
-    return (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in navigator && Boolean(navigator.standalone))
-    )
-  }
-
-  function getInstallStatusText() {
-    if (isPwaInstalled || isStandaloneDisplay()) {
-      return '已检测到主屏幕/独立窗口运行'
-    }
-
-    if (canInstallPwa) {
-      return '可安装；小米/MIUI 需允许浏览器创建桌面快捷方式'
-    }
-
-    return '浏览器菜单添加；小米/MIUI 需开启桌面快捷方式权限'
-  }
-
   async function installPwa() {
-    if (isPwaInstalled || isStandaloneDisplay()) {
-      toast.success('YakYak 已经在主屏幕中运行')
-      isPwaInstalled = true
-      return
-    }
-
     if (!deferredInstallPrompt) {
-      toast.info('请用浏览器菜单添加；小米/MIUI 需允许浏览器创建桌面快捷方式')
+      toast.info('请用浏览器菜单添加；小米/MIUI 需先允许浏览器创建桌面快捷方式')
       return
     }
 
@@ -522,11 +490,25 @@
     canInstallPwa = false
 
     if (choice.outcome === 'accepted') {
-      toast.info('浏览器已接受安装请求；是否成功以系统添加结果为准')
+      toast.info('已发起添加请求；如果桌面没有图标，请开启桌面快捷方式权限后重试')
       return
     }
 
     toast.info('未添加到主屏幕')
+  }
+
+  function updateDocumentTheme(currentTheme: ThemeMode) {
+    if (typeof document === 'undefined') return
+
+    document.documentElement.style.setProperty(
+      '--app-bg',
+      currentTheme === 'dark' ? '#050505' : '#f7f7f2',
+    )
+  }
+
+  function updateViewportHeight() {
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+    document.documentElement.style.setProperty('--app-height', `${viewportHeight}px`)
   }
 
   function getFullscreenElement() {
@@ -541,7 +523,8 @@
       return
     }
 
-    const root = document.documentElement as FullscreenElement
+    updateViewportHeight()
+    const root = (document.querySelector('#app') ?? document.documentElement) as FullscreenElement
     const request = root.requestFullscreen ?? root.webkitRequestFullscreen
 
     if (!request) {
@@ -987,11 +970,11 @@
 </svelte:head>
 
 <main
-  class={`h-svh overflow-hidden transition-colors duration-300 ${
+  class={`min-h-[var(--app-height)] overflow-hidden transition-colors duration-300 ${
     theme === 'dark' ? 'bg-[#050505] text-zinc-100' : 'bg-[#f7f7f2] text-zinc-950'
   }`}
 >
-  <div class="mx-auto flex h-svh w-full max-w-[560px] flex-col overflow-hidden px-4 pb-4 pt-4 sm:px-6">
+  <div class="mx-auto flex h-[var(--app-height)] w-full max-w-[560px] flex-col overflow-hidden px-4 pb-4 pt-4 sm:px-6">
     <header class="flex shrink-0 items-center justify-between gap-3">
       <div class="min-w-0">
         <div class="flex min-w-0 items-end gap-2">
@@ -1413,7 +1396,7 @@
           <span class="min-w-0">
             <span class="block text-sm font-black">添加到主屏幕</span>
             <span class={`mt-1 block text-xs ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500'}`}>
-              {installStatusText}
+              {canInstallPwa ? '点击发起添加；失败时先开启桌面快捷方式权限' : '浏览器菜单添加；小米/MIUI 需开启桌面快捷方式权限'}
             </span>
           </span>
         </button>
@@ -1425,7 +1408,7 @@
               : 'border-zinc-200 bg-zinc-50 text-zinc-600'
           }`}
         >
-          小米/MIUI 如果添加失败，请到系统设置里给当前浏览器开启“创建桌面快捷方式”或“桌面快捷方式”权限。网页无法读取手机桌面图标，只能检测当前是否从主屏幕独立窗口打开。
+          小米/MIUI 如果添加失败，请到系统设置里给当前浏览器开启“创建桌面快捷方式”或“桌面快捷方式”权限。网页无法可靠读取手机桌面图标，这里不会判断“已添加”，每次都会尽量重新发起添加或提示从浏览器菜单添加。
         </div>
 
         <button
