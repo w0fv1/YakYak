@@ -507,7 +507,11 @@
   }
 
   function updateViewportHeight() {
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+    const fullscreenElement = getFullscreenElement()
+    const viewportHeight = fullscreenElement
+      ? Math.max(window.innerHeight, window.screen?.height ?? 0)
+      : window.visualViewport?.height ?? window.innerHeight
+
     document.documentElement.style.setProperty('--app-height', `${viewportHeight}px`)
   }
 
@@ -535,6 +539,7 @@
     try {
       await request.call(root)
       isFullscreen = true
+      updateViewportHeight()
       toast.success('已进入全屏')
     } catch {
       toast.info('浏览器没有允许全屏，请再点一次或检查权限')
