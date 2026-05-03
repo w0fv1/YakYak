@@ -38,6 +38,17 @@ YakYak（中文名：说词儿啊！）是一个给直播主播使用的手机�
 - svelte-dnd-action
 - svelte-sonner
 
+## 目录规范
+
+`src/` 按职责分为四层：
+
+- `components/`：基础、业务无关的可迁移组件。这里的组件不应该依赖 YakYak 业务类型、业务文案或 `services/`，迁移到其他项目也应能独立复用。
+- `modules/`：面向 YakYak 功能的组装组件。模块可以组合 `components/`、调用 `services/`，并承载具体业务 UI，例如流程词面板、倒计时区域、词库弹窗。
+- `services/`：应用逻辑能力。这里放持久化、导入导出、浏览器能力、PWA、全屏、引导、快照规范化、默认数据和业务类型。
+- `utils/`：可到处复制粘贴的纯工具函数。工具不应该知道 YakYak 业务，例如 ID 生成、随机选择、JSON 下载。
+
+根 `App.svelte` 只负责挂载应用入口，不承载复杂业务逻辑。应用级状态编排放在 `modules/YakYakApp.svelte`；如果 `YakYakApp.svelte` 继续膨胀，应优先把逻辑下沉到 `services/`，把 UI 下沉到更小的 `modules/`。
+
 ## 本地开发
 
 ```bash
