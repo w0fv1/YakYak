@@ -3,15 +3,16 @@
   import { GripVertical, X } from 'lucide-svelte'
   import { dragHandle } from 'svelte-dnd-action'
 
-  type ThemeMode = 'dark' | 'light'
+  type VisualTheme = 'dark' | 'light'
   type GestureMode = 'idle' | 'pending' | 'swipe'
 
   export let id: string
   export let value: string
-  export let theme: ThemeMode
+  export let theme: VisualTheme
   export let multiline = false
   export let reorderable = false
   export let placeholder = ''
+  export let ariaLabel = ''
 
   const dispatch = createEventDispatcher<{
     change: string
@@ -117,8 +118,9 @@
 
 <div
   data-editor-row-id={id}
+  aria-label={ariaLabel || value || placeholder}
   role="listitem"
-  class={`swipe-delete-row relative touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 ${
+  class={`relative cursor-ew-resize touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 active:cursor-grabbing ${
     removing ? 'max-h-0 opacity-0' : multiline ? 'max-h-[999px] opacity-100' : 'max-h-20 opacity-100'
   }`}
   on:pointerdown={handlePointerDown}
@@ -172,7 +174,7 @@
 
     {#if reorderable}
       <button
-        class={`drag-handle mt-1 grid size-8 shrink-0 place-items-center rounded-full ${
+        class={`mt-1 grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-full active:cursor-grabbing ${
           theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-100'
         }`}
         data-drag-handle
