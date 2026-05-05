@@ -31,7 +31,13 @@
 
   let newFiller = ''
   let newFlowText = ''
+  let isSortingFlow = false
+  let sortableFlowPhrases = flowPhrases
   const flowDragHandleZone: any = dragHandleZone
+
+  $: if (!isSortingFlow) {
+    sortableFlowPhrases = flowPhrases
+  }
 
   function addFiller() {
     const text = newFiller.trim()
@@ -49,8 +55,20 @@
     newFlowText = ''
   }
 
-  function handleFlowSort(event: CustomEvent<{ items: FlowLine[] }>) {
-    dispatch('sortFlow', event.detail.items.filter((item) => typeof item.text === 'string'))
+  function cleanFlowItems(items: FlowLine[]) {
+    return items.filter((item) => typeof item.text === 'string' && !isDndShadowItem(item))
+  }
+
+  function handleFlowConsider(event: CustomEvent<{ items: FlowLine[] }>) {
+    isSortingFlow = true
+    sortableFlowPhrases = event.detail.items.filter((item) => typeof item.text === 'string')
+  }
+
+  function handleFlowFinalize(event: CustomEvent<{ items: FlowLine[] }>) {
+    const nextItems = cleanFlowItems(event.detail.items)
+    sortableFlowPhrases = nextItems
+    isSortingFlow = false
+    dispatch('sortFlow', nextItems)
   }
 
   function styleDraggedEditorRow(element?: HTMLElement) {
@@ -70,23 +88,11 @@
   maxWidth="sm:max-w-lg"
   zIndex="z-50"
   panelClass={`flex max-h-[92svh] flex-col overflow-hidden rounded-2xl ${theme === 'dark' ? 'bg-[#09090b]' : ''}`}
-  contentClass="flex min-h-0 flex-1 flex-col p-0"
+  contentClass="flex min-h-0 flex-1 flex-col p-4"
   on:close={() => dispatch('close')}
 >
-  <div class="shrink-0 px-4 pb-3 pt-3">
-    <div class={`mx-auto mb-3 h-1 w-10 rounded-full ${theme === 'dark' ? 'bg-white/16' : 'bg-zinc-300'}`}></div>
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h2 id="editor-title" class="text-lg font-black leading-tight tracking-normal">编辑词库</h2>
-        <p class="mt-1 text-xs text-zinc-500">
-          {flowPhrases.length} 条流程词 · {fillerCount} 条万能句
-        </p>
-      </div>
-    </div>
-  </div>
-
   <div
-    class={`mx-3 grid shrink-0 grid-cols-2 gap-1 rounded-xl p-1 ${
+    class={`grid shrink-0 grid-cols-2 gap-1 rounded-xl p-1 ${
       theme === 'dark' ? 'bg-white/[0.06]' : 'bg-zinc-100'
     }`}
     data-guide="editor-tabs"
@@ -123,7 +129,7 @@
     </button>
   </div>
 
-  <div class="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
+  <div class="no-scrollbar -mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-1 pt-3">
     {#if editTab === 'flow'}
       <div class="sticky top-0 z-10 mb-4 flex gap-2 backdrop-blur" data-guide="editor-add">
         <input
@@ -149,20 +155,30 @@
       <div
         class="space-y-3 cursor-default"
         use:flowDragHandleZone={{
-          items: flowPhrases,
+          items: sortableFlowPhrases,
           flipDurationMs: editorFlipDurationMs,
-          dragHandleSelector: '[data-drag-handle]',
+          delayTouchStart: 120,
           morphDisabled: true,
+          useCursorForDetection: true,
           transformDraggedElement: styleDraggedEditorRow,
         }}
-        on:consider={handleFlowSort}
-        on:finalize={handleFlowSort}
+        on:consider={handleFlowConsider}
+        on:finalize={handleFlowFinalize}
         data-guide="editor-list"
         aria-label="流程词排序"
       >
-        {#each flowPhrases as item (item.id)}
-          <div animate:flip={{ duration: editorFlipDurationMs }}>
-            {#if !isDndShadowItem(item)}
+        {#each sortableFlowPhrases as item (`${item.id}-${isDndShadowItem(item) ? 'shadow' : 'item'}`)}
+          <div
+            animate:flip={{ duration: editorFlipDurationMs }}
+            data-is-dnd-shadow-item-hint={isDndShadowItem(item) ? 'true' : undefined}
+            role={isDndShadowItem(item) ? 'presentation' : undefined}
+            aria-hidden={isDndShadowItem(item) ? 'true' : undefined}
+          >
+            {#if isDndShadowItem(item)}
+              <div class="flex h-full min-h-[58px] items-center justify-center rounded-xl text-xs font-black text-cyan-200/80">
+                放到这里
+              </div>
+            {:else}
               <SwipeEditableRow
                 id={item.id}
                 value={item.text}
@@ -215,7 +231,7 @@
     {/if}
   </div>
 
-  <div class="shrink-0 border-t border-current/10 p-3">
+  <div class="-mx-4 -mb-4 mt-3 shrink-0 border-t border-current/10 p-3">
     <button
       class={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 font-black ${
         theme === 'dark' ? 'bg-emerald-400 text-zinc-950' : 'bg-emerald-600 text-white'

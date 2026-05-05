@@ -35,7 +35,7 @@
     if (event.button !== 0 || removing) return
 
     const target = event.target as HTMLElement
-    if (target.closest('[data-drag-handle]')) return
+    if (target.closest('[data-row-action]')) return
 
     ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
     activePointerId = event.pointerId
@@ -78,8 +78,7 @@
     clearGesture()
   }
 
-  function completeDelete() {
-    const direction = swipeX >= 0 ? 1 : -1
+  function completeDelete(direction = swipeX >= 0 ? 1 : -1) {
     swipeX = direction * window.innerWidth
     removing = true
 
@@ -108,11 +107,10 @@
     textareaElement.style.height = `${textareaElement.scrollHeight}px`
   }
 
-  function ignoreNonCancelableTouchStart(event: TouchEvent) {
-    if (event.cancelable) return
-
-    event.stopImmediatePropagation()
+  function deleteFromButton(event: Event) {
+    event.preventDefault()
     event.stopPropagation()
+    completeDelete(-1)
   }
 </script>
 
@@ -120,7 +118,7 @@
   data-editor-row-id={id}
   aria-label={ariaLabel || value || placeholder}
   role="listitem"
-  class={`relative cursor-ew-resize touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 active:cursor-grabbing ${
+  class={`relative touch-pan-y select-none overflow-hidden rounded-xl transition-all duration-200 ${
     removing ? 'max-h-0 opacity-0' : multiline ? 'max-h-[999px] opacity-100' : 'max-h-20 opacity-100'
   }`}
   on:pointerdown={handlePointerDown}
@@ -177,14 +175,29 @@
         class={`mt-1 grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-full active:cursor-grabbing ${
           theme === 'dark' ? 'text-zinc-500 active:bg-white/10' : 'text-zinc-400 active:bg-zinc-100'
         }`}
+        data-row-action
         data-drag-handle
         use:dragHandle
-        on:touchstart|capture={ignoreNonCancelableTouchStart}
         aria-label="长按拖动排序"
         type="button"
       >
         <GripVertical size={17} />
       </button>
     {/if}
+
+    <button
+      class={`mt-1 grid size-8 shrink-0 place-items-center rounded-full ${
+        theme === 'dark'
+          ? 'text-zinc-500 active:bg-red-500/15 active:text-red-300'
+          : 'text-zinc-400 active:bg-red-50 active:text-red-600'
+      }`}
+      data-row-action
+      aria-label="删除"
+      type="button"
+      on:pointerdown={(event) => event.stopPropagation()}
+      on:click={deleteFromButton}
+    >
+      <X size={17} />
+    </button>
   </div>
 </div>

@@ -5,6 +5,7 @@
   import DataDialog from './DataDialog.svelte'
   import FlowBoard from './FlowBoard.svelte'
   import LibraryEditorDialog from './LibraryEditorDialog.svelte'
+  import RestoreDefaultsDialog from './RestoreDefaultsDialog.svelte'
   import SystemSettingsDialog from './SystemSettingsDialog.svelte'
   import TimerHero from './TimerHero.svelte'
   import TimerSettingsDialog from './TimerSettingsDialog.svelte'
@@ -21,6 +22,7 @@
     readSnapshot,
     writeSnapshot,
   } from '../services/persistence'
+  import { getPlatformCapabilities } from '../services/platform'
   import {
     buildDefaultSnapshot,
     buildFillerLines,
@@ -59,11 +61,13 @@
   let isTimerOpen = false
   let isDataOpen = false
   let isSystemOpen = false
+  let isRestoreDefaultsOpen = false
   let timerInput = String(defaultDuration)
   let importPreview: ImportPreview | undefined
   let importFileInput: HTMLInputElement | undefined
   let hydrated = false
   let saveTimer: ReturnType<typeof setTimeout> | undefined
+  let platformCapabilities = getPlatformCapabilities()
 
   $: warningThreshold = Math.max(1, Math.ceil(duration / 3))
   $: isWarning = remaining <= warningThreshold
@@ -77,6 +81,7 @@
   $: if (hydrated) queueSnapshotSave(snapshot)
 
   onMount(() => {
+    platformCapabilities = getPlatformCapabilities()
     const teardownBrowserEvents = setupAppBrowserEvents({
       onInstallPrompt: (event) => {
         deferredInstallPrompt = event
@@ -306,9 +311,9 @@
   }
 
   function restoreDefaults() {
-    if (!window.confirm('恢复默认会覆盖当前倒计时、主题、流程词和万能句。确定继续吗？')) return
-
     importPreview = undefined
+    isRestoreDefaultsOpen = false
+    isSystemOpen = false
     const nextSnapshot = buildDefaultSnapshot(guideState)
     applySnapshot(nextSnapshot)
     saveSnapshotNow(nextSnapshot)
@@ -425,11 +430,20 @@
     {theme}
     {canInstallPwa}
     {isFullscreen}
+    {platformCapabilities}
     on:close={() => (isSystemOpen = false)}
     on:install={installPwa}
     on:fullscreen={toggleFullscreen}
     on:guide={() => startMainGuide(true)}
-    on:restoreDefaults={restoreDefaults}
+    on:restoreDefaults={() => (isRestoreDefaultsOpen = true)}
+  />
+{/if}
+
+{#if isRestoreDefaultsOpen}
+  <RestoreDefaultsDialog
+    {theme}
+    on:cancel={() => (isRestoreDefaultsOpen = false)}
+    on:confirm={restoreDefaults}
   />
 {/if}
 
