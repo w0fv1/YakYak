@@ -84,6 +84,16 @@ YAKYAK_BASE_URL=/YakYak/ corepack pnpm build
 YAKYAK_BASE_URL=https://yakyak.w0fv1.dev/ corepack pnpm build
 ```
 
+## Nfirco 集成构建
+
+当本仓库作为 Nfirco 的 `app/yakyak` 子模块使用时，运行：
+
+```bash
+corepack pnpm build:nfirco
+```
+
+该命令使用 `/yakyak/` 作为 base URL，并将完整构建产物同步到 Nfirco 的 `src/main/resources/yakyak`。如果 Gradle 运行时资源目录已经存在，也会同步更新 `build/resources/main/yakyak`。
+
 ## 部署
 
 线上地址：
