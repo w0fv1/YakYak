@@ -1,5 +1,6 @@
 @import 'driver.js/dist/driver.css';
 @import 'tailwindcss';
+@import '../../_shared/styles/scrollbar.css';
 
 :root {
   --app-height: 100dvh;
